@@ -78,7 +78,7 @@ class Exp(BaseExp):
         self.model.head.initialize_biases(1e-2)
         return self.model
 
-    def get_data_loader(self, batch_size, is_distributed, no_aug=False):
+    def get_data_loader(self, batch_size, is_distributed, no_aug=False, dataset=None):
         from yolox.data import (
             COCODataset,
             DataLoader,
@@ -87,34 +87,34 @@ class Exp(BaseExp):
             TrainTransform,
             YoloBatchSampler
         )
+        if dataset is None:
+            coco_dataset = COCODataset(
+                data_dir=None,
+                json_file=self.train_ann,
+                img_size=self.input_size,
+                preproc=TrainTransform(
+                    rgb_means=(0.485, 0.456, 0.406),
+                    std=(0.229, 0.224, 0.225),
+                    max_labels=50,
+                ),
+            )
 
-        dataset = COCODataset(
-            data_dir=None,
-            json_file=self.train_ann,
-            img_size=self.input_size,
-            preproc=TrainTransform(
-                rgb_means=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225),
-                max_labels=50,
-            ),
-        )
-
-        dataset = MosaicDetection(
-            dataset,
-            mosaic=not no_aug,
-            img_size=self.input_size,
-            preproc=TrainTransform(
-                rgb_means=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225),
-                max_labels=120,
-            ),
-            degrees=self.degrees,
-            translate=self.translate,
-            scale=self.scale,
-            shear=self.shear,
-            perspective=self.perspective,
-            enable_mixup=self.enable_mixup,
-        )
+            dataset = MosaicDetection(
+                coco_dataset,
+                mosaic=not no_aug,
+                img_size=self.input_size,
+                preproc=TrainTransform(
+                    rgb_means=(0.485, 0.456, 0.406),
+                    std=(0.229, 0.224, 0.225),
+                    max_labels=120,
+                ),
+                degrees=self.degrees,
+                translate=self.translate,
+                scale=self.scale,
+                shear=self.shear,
+                perspective=self.perspective,
+                enable_mixup=self.enable_mixup,
+            )
 
         self.dataset = dataset
 
