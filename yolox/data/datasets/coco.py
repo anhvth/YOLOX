@@ -84,7 +84,6 @@ class COCODataset(Dataset):
         img_info = (height, width)
 
         file_name = im_ann["file_name"] if "file_name" in im_ann else "{:012}".format(id_) + ".jpg"
-
         del im_ann, annotations
 
         return (res, img_info, file_name)

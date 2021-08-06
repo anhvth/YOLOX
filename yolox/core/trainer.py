@@ -171,10 +171,10 @@ class Trainer:
 
         self.model = model
         self.model.train()
-
-        self.evaluator = self.exp.get_evaluator(
-            batch_size=self.args.batch_size, is_distributed=self.is_distributed
-        )
+        if self.args.evaluate:
+            self.evaluator = self.exp.get_evaluator(
+                batch_size=self.args.batch_size, is_distributed=self.is_distributed
+            )
         # Tensorboard logger
         if self.rank == 0:
             self.tblogger = SummaryWriter(self.file_name)
@@ -209,10 +209,11 @@ class Trainer:
             self.ema_model.update_attr(self.model)
 
         self.save_ckpt(ckpt_name="latest")
-
+        self.save_ckpt(f'{self.epoch}')
         if (self.epoch + 1) % self.exp.eval_interval == 0:
             all_reduce_norm(self.model)
-            self.evaluate_and_save_model()
+            if self.args.evaluate:
+                self.evaluate_and_save_model()
 
     def before_iter(self):
         pass

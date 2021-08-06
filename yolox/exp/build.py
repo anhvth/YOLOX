@@ -30,6 +30,7 @@ def get_exp_by_name(exp_name):
         "yolox-nano": "nano.py",
         "yolov3": "yolov3.py",
     }
+    assert exp_name in filedict, '{} not in {}'.format(exp_name, filedict.keys())
     filename = filedict[exp_name]
     exp_path = os.path.join(yolox_path, "exps", "default", filename)
     return get_exp_by_file(exp_path)

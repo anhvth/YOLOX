@@ -1,3 +1,4 @@
+
 ### Linux ###
 *~
 
@@ -216,3 +217,6 @@ events.out.tfevents*
 
 # vim
 .vim
+apex
+.gitignore
+nbs/
