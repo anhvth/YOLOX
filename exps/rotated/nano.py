@@ -48,9 +48,9 @@ class Exp(MyExp):
             YoloBatchSampler
         )
         dataset = RotatedCOCODataset(
-        data_dir='/data/compressed_ford_demo/',
-        json_file='train.json',
-        name='image',
+        data_dir='datasets/sample-rot-parking-1k/',
+        json_file='mini_json.json',
+        name='images',
         img_size=(256, 256),
         preproc=RotTrainTransform(
             rgb_means=(0.485, 0.456, 0.406),

@@ -178,6 +178,7 @@ class YOLOXHead(nn.Module):
                 if self.use_l1:
                     batch_size = reg_output.shape[0]
                     hsize, wsize = reg_output.shape[-2:]
+                    import ipdb; ipdb.set_trace()
                     reg_output = reg_output.view(
                         batch_size, self.n_anchors, 4, hsize, wsize
                     )
@@ -188,7 +189,7 @@ class YOLOXHead(nn.Module):
 
             else:
                 output = torch.cat(
-                    [reg_output[:,:4], obj_output.sigmoid(), cls_output.sigmoid()], 1
+                    [reg_output, obj_output.sigmoid(), cls_output.sigmoid()], 1
                 )
 
             outputs.append(output)
@@ -412,7 +413,7 @@ class YOLOXHead(nn.Module):
         reg_weight = 5.0
         loss = reg_weight * loss_iou + loss_obj + loss_cls + loss_l1
 
-        return (
+        loss, iou_loss, conf_loss, cls_loss, l1_loss, num_fg = (
             loss,
             reg_weight * loss_iou,
             loss_obj,
@@ -420,6 +421,7 @@ class YOLOXHead(nn.Module):
             loss_l1,
             num_fg / max(num_gts, 1),
         )
+        return (loss, iou_loss, conf_loss, cls_loss, l1_loss, num_fg)
 
     def get_l1_target(self, l1_target, gt, stride, x_shifts, y_shifts, eps=1e-8):
         l1_target[:, 0] = gt[:, 0] / stride - x_shifts

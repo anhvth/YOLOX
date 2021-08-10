@@ -37,6 +37,10 @@ class Trainer:
         self.exp = exp
         self.args = args
 
+        self.debug = args.debug
+        if self.debug:
+            self.exp.print_interval= 1
+
         # training related attr
         self.max_epoch = exp.max_epoch
         self.amp_training = args.fp16
@@ -58,12 +62,12 @@ class Trainer:
         if self.rank == 0:
             os.makedirs(self.file_name, exist_ok=True)
 
-        setup_logger(
-            self.file_name,
-            distributed_rank=self.rank,
-            filename="train_log.txt",
-            mode="a",
-        )
+        # setup_logger(
+        #     self.file_name,
+        #     distributed_rank=self.rank,
+        #     filename="train_log.txt",
+        #     mode="a",
+        # )
 
     def train(self):
         self.before_train()
@@ -83,18 +87,25 @@ class Trainer:
     def train_in_iter(self):
         for self.iter in range(self.max_iter):
             self.before_iter()
-            self.train_one_iter()
+            if not self.debug:
+                self.train_one_iter()
+            else:
+                self.train_one_iter_debug()
             self.after_iter()
 
-    def train_one_iter(self):
-        iter_start_time = time.time()
+    def train_one_iter_debug(self):
+        if not hasattr(self, 'inps'):
+            self.inps, self.targets = self.prefetcher.next()
+        return self.train_one_iter(self.inps, self.targets)
 
-        inps, targets = self.prefetcher.next()
+    def train_one_iter(self, inps=None, targets=None):
+        iter_start_time = time.time()
+        if inps is None and targets is None:
+            inps, targets = self.prefetcher.next()
         inps = inps.to(self.data_type)
         targets = targets.to(self.data_type)
         targets.requires_grad = False
         data_end_time = time.time()
-
         outputs = self.model(inps, targets)
         loss = outputs["total_loss"]
 

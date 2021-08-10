@@ -102,7 +102,6 @@ class COCODataset(Dataset):
 
         img = cv2.imread(img_file)
         assert img is not None
-
         return img, res.copy(), img_info, np.array([id_])
 
     @Dataset.resize_getitem

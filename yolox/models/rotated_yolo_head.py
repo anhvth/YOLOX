@@ -1,89 +1,31 @@
 from .yolo_head import *
 
+from .riou_loss import RIoULoss
 
+# def rbboxes_iou(bboxes_a, bboxes_b, xyxy=True):
+#     if bboxes_a.shape[1] != 5 or bboxes_b.shape[1] != 5:
+#         raise IndexError
 
-class RotIOUloss(nn.Module):
-    def __init__(self, reduction="none", loss_type="iou"):
-        super(RotIOUloss, self).__init__()
-        self.reduction = reduction
-        self.loss_type = loss_type
+#     if xyxy:
+#         tl = torch.max(bboxes_a[:, None, :2], bboxes_b[:, :2])
+#         br = torch.min(bboxes_a[:, None, 2:], bboxes_b[:, 2:])
+#         area_a = torch.prod(bboxes_a[:, 2:] - bboxes_a[:, :2], 1)
+#         area_b = torch.prod(bboxes_b[:, 2:] - bboxes_b[:, :2], 1)
+#     else:
+#         tl = torch.max(
+#             (bboxes_a[:, None, :2] - bboxes_a[:, None, 2:] / 2),
+#             (bboxes_b[:, :2] - bboxes_b[:, 2:] / 2),
+#         )
+#         br = torch.min(
+#             (bboxes_a[:, None, :2] + bboxes_a[:, None, 2:] / 2),
+#             (bboxes_b[:, :2] + bboxes_b[:, 2:] / 2),
+#         )
 
-    def forward(self, pred, target):
-        # Mode: cycwwh
-        assert pred.shape[0] == target.shape[0]
-        rpred = pred.view(-1, 5)
-        rtarget = target.view(-1, 5)
-        pred = rpred[:, :4]
-        target = rtarget[:, :4]
-
-        tl = torch.max(
-            (pred[:, :2] - pred[:, 2:] / 2), (target[:, :2] - target[:, 2:] / 2)
-        )
-        br = torch.min(
-            (pred[:, :2] + pred[:, 2:] / 2), (target[:, :2] + target[:, 2:] / 2)
-        )
-        
-        area_p = torch.prod(pred[:, 2:], 1)
-        area_g = torch.prod(target[:, 2:], 1)
-
-        en = (tl < br).type(tl.type()).prod(dim=1)
-        area_i = torch.prod(br - tl, 1) * en
-        iou = (area_i) / (area_p + area_g - area_i + 1e-16)
-
-        if self.loss_type == "iou":
-            loss = 1 - iou ** 2
-        elif self.loss_type == "giou":
-            c_tl = torch.min(
-                (pred[:, :2] - pred[:, 2:] / 2), (target[:, :2] - target[:, 2:] / 2)
-            )
-            c_br = torch.max(
-                (pred[:, :2] + pred[:, 2:] / 2), (target[:, :2] + target[:, 2:] / 2)
-            )
-            area_c = torch.prod(c_br - c_tl, 1)
-            giou = iou - (area_c - area_i) / area_c.clamp(1e-16)
-            loss = 1 - giou.clamp(min=-1.0, max=1.0)
-        
-
-        angle_target = rtarget[:,-1]
-        angle_target = angle_target/180
-        angle_loss = torch.abs(rpred[:,-1] - angle_target)
-        
-        if self.reduction == "mean":
-            angle_loss = angle_loss.mean()
-            loss = loss.mean()
-
-        elif self.reduction == "sum":
-            loss = loss.sum()
-            angle_loss = angle_loss.sum()
-
-        return loss+angle_loss
-
-
-
-def rbboxes_iou(bboxes_a, bboxes_b, xyxy=True):
-    if bboxes_a.shape[1] != 5 or bboxes_b.shape[1] != 5:
-        raise IndexError
-
-    if xyxy:
-        tl = torch.max(bboxes_a[:, None, :2], bboxes_b[:, :2])
-        br = torch.min(bboxes_a[:, None, 2:], bboxes_b[:, 2:])
-        area_a = torch.prod(bboxes_a[:, 2:] - bboxes_a[:, :2], 1)
-        area_b = torch.prod(bboxes_b[:, 2:] - bboxes_b[:, :2], 1)
-    else:
-        tl = torch.max(
-            (bboxes_a[:, None, :2] - bboxes_a[:, None, 2:] / 2),
-            (bboxes_b[:, :2] - bboxes_b[:, 2:] / 2),
-        )
-        br = torch.min(
-            (bboxes_a[:, None, :2] + bboxes_a[:, None, 2:] / 2),
-            (bboxes_b[:, :2] + bboxes_b[:, 2:] / 2),
-        )
-
-        area_a = torch.prod(bboxes_a[:, 2:], 1)
-        area_b = torch.prod(bboxes_b[:, 2:], 1)
-    en = (tl < br).type(tl.type()).prod(dim=2)
-    area_i = torch.prod(br - tl, 2) * en  # * ((tl < br).all())
-    return area_i / (area_a[:, None] + area_b - area_i)
+#         area_a = torch.prod(bboxes_a[:, 2:], 1)
+#         area_b = torch.prod(bboxes_b[:, 2:], 1)
+#     en = (tl < br).type(tl.type()).prod(dim=2)
+#     area_i = torch.prod(br - tl, 2) * en  # * ((tl < br).all())
+#     return area_i / (area_a[:, None] + area_b - area_i)
 
 
 
@@ -102,8 +44,9 @@ class RotatedYOLOXHead(YOLOXHead):
             act (str): activation type of conv. Defalut value: "silu".
             depthwise (bool): wheather apply depthwise conv in conv branch. Defalut value: False.
         """
-        super(RotatedYOLOXHead, self).__init__(
-            num_classes, width=width, strides=strides, in_channels=in_channels, act=act,depthwise=depthwise,
+        super().__init__(
+            num_classes, width=width, strides=strides, in_channels=in_channels, 
+            act=act,depthwise=depthwise,
         )
 
         self.n_anchors = 1
@@ -199,7 +142,7 @@ class RotatedYOLOXHead(YOLOXHead):
         self.use_l1 = False
         self.l1_loss = nn.L1Loss(reduction="none")
         self.bcewithlog_loss = nn.BCEWithLogitsLoss(reduction="none")
-        self.iou_loss = RotIOUloss(reduction="none")
+        self.iou_loss = RIoULoss(640, 640)
         self.strides = strides
         self.grids = [torch.zeros(1)] * len(in_channels)
         self.expanded_strides = [None] * len(in_channels)
@@ -375,7 +318,6 @@ class RotatedYOLOXHead(YOLOXHead):
 
     def get_output_and_grid(self, output, k, stride, dtype):
         grid = self.grids[k]
-
         batch_size = output.shape[0]
         n_ch = 6 + self.num_classes
         hsize, wsize = output.shape[-2:]
@@ -383,7 +325,6 @@ class RotatedYOLOXHead(YOLOXHead):
             yv, xv = torch.meshgrid([torch.arange(hsize), torch.arange(wsize)])
             grid = torch.stack((xv, yv), 2).view(1, 1, hsize, wsize, 2).type(dtype)
             self.grids[k] = grid
-
         output = output.view(batch_size, self.n_anchors, n_ch, hsize, wsize)
         output = output.permute(0, 1, 3, 4, 2).reshape(
             batch_size, self.n_anchors * hsize * wsize, -1
@@ -391,6 +332,7 @@ class RotatedYOLOXHead(YOLOXHead):
         grid = grid.view(1, -1, 2)
         output[..., :2] = (output[..., :2] + grid) * stride
         output[..., 2:4] = torch.exp(output[..., 2:4]) * stride
+        output[..., 4] = output[..., 4].sigmoid()*90
         return output, grid
 
     @torch.no_grad()
@@ -504,5 +446,6 @@ class RotatedYOLOXHead(YOLOXHead):
         
         outputs[..., :2] = (outputs[..., :2] + grids) * strides
         outputs[..., 2:4] = torch.exp(outputs[..., 2:4]) * strides
-        # outputs = torch.cat([outputs[...,:4], outputs[...,5:]], -1)
+        outputs[..., 4] = outputs[..., 4].sigmoid()*90
+
         return outputs

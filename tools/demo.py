@@ -11,7 +11,7 @@ import torch
 from yolox.data.data_augment import preproc
 from yolox.data.datasets import COCO_CLASSES
 from yolox.exp import get_exp
-from yolox.utils import fuse_model, get_model_info, postprocess, vis
+from yolox.utils import fuse_model, get_model_info, postprocess, rbox_postprocess, vis, rvis
 
 import argparse
 import os
@@ -145,13 +145,14 @@ class Predictor(object):
             outputs = self.model(img)
             if self.decoder is not None:
                 outputs = self.decoder(outputs, dtype=outputs.type())
-            outputs = postprocess(
+            outputs = rbox_postprocess(
                 outputs, self.num_classes, self.confthre, self.nmsthre
             )
             logger.info("Infer time: {:.4f}s".format(time.time() - t0))
         return outputs, img_info
 
     def visual(self, output, img_info, cls_conf=0.35):
+        output, rboxes = output
         ratio = img_info["ratio"]
         img = img_info["raw_img"]
         if output is None:
@@ -160,13 +161,15 @@ class Predictor(object):
 
         bboxes = output[:, 0:4]
 
-        # preprocessing: resize
+
         bboxes /= ratio
+
+        rboxes /= ratio
 
         cls = output[:, 6]
         scores = output[:, 4] * output[:, 5]
 
-        vis_res = vis(img, bboxes, scores, cls, cls_conf, self.cls_names)
+        vis_res = rvis(img, rboxes, scores, cls, cls_conf, self.cls_names)
         return vis_res
 
 
@@ -178,6 +181,9 @@ def image_demo(predictor, vis_folder, path, current_time, save_result):
     files.sort()
     for image_name in files:
         outputs, img_info = predictor.inference(image_name)
+        # detections, rboxes = outputs
+        
+        # import ipdb; ipdb.set_trace()
         result_image = predictor.visual(outputs[0], img_info, predictor.confthre)
         if save_result:
             save_folder = os.path.join(

@@ -48,6 +48,9 @@ def make_parser():
         "--resume", default=False, action="store_true", help="resume training"
     )
     parser.add_argument(
+        "--debug", default=False, action="store_true", help="Enter debug mode"
+    )
+    parser.add_argument(
         "--evaluate", default=False, action="store_true", help="Evaluate after epoch"
     )
     parser.add_argument("-c", "--ckpt", default=None, type=str, help="checkpoint file")

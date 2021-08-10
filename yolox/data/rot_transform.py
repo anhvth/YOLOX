@@ -50,13 +50,14 @@ def point_flip_x(points, width):
 
 def _mirror(image, boxes, rot_bboxes):
     _, width, _ = image.shape
-    if random.randrange(2):
-        image = image[:, ::-1]
-        boxes = boxes.copy()
-        boxes[:, 0::2] = width - boxes[:, 2::-2]
+    # TODO: train loss model with max angle=180
+    # if random.randrange(2):
+    #     image = image[:, ::-1]
+    #     boxes = boxes.copy()
+    #     boxes[:, 0::2] = width - boxes[:, 2::-2]
 
-        rot_bboxes[:,0] = width - rot_bboxes[:,0]
-        rot_bboxes[:,-1] = 180-rot_bboxes[:,-1]
+    #     rot_bboxes[:,0] = width - rot_bboxes[:,0]
+    #     rot_bboxes[:,-1] = 180-rot_bboxes[:,-1]
 
     return image, boxes, rot_bboxes
 
