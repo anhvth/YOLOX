@@ -1,5 +1,6 @@
+from yolox.utils import get_rank
 from .yolo_head import *
-
+import numpy as np
 from .riou_loss import RIoULoss
 
 # def rbboxes_iou(bboxes_a, bboxes_b, xyxy=True):
@@ -286,9 +287,16 @@ class RotatedYOLOXHead(YOLOXHead):
             l1_targets = torch.cat(l1_targets, 0)
 
         num_fg = max(num_fg, 1)
+        reg_preds = bbox_preds.view(-1, 5)[fg_masks]
         loss_iou = (
-            self.iou_loss(bbox_preds.view(-1, 5)[fg_masks], reg_targets)
+            self.iou_loss(reg_preds, reg_targets)
         ).sum() / num_fg
+        
+        if get_rank() == 0:
+            if self.iou_loss.step % 5 == 0:
+                ids = np.random.choice(len(bbox_preds), 16, replace=False)
+                self.iou_loss._debug(reg_preds[ids], reg_targets[ids])
+
         loss_obj = (
             self.bcewithlog_loss(obj_preds.view(-1, 1), obj_targets)
         ).sum() / num_fg

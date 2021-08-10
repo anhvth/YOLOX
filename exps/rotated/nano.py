@@ -15,10 +15,11 @@ class Exp(MyExp):
         self.depth = 0.33
         self.width = 0.25
         self.scale = (0.5, 1.5)
-        self.random_size = (10, 20)
-        self.test_size = (256, 256)
+        self.random_size = None#(10, 20)
+        self.test_size = (640, 640)
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
         self.enable_mixup = False
+        self.print_interval = 5
 
     def get_model(self, sublinear=False):
 
@@ -48,9 +49,13 @@ class Exp(MyExp):
             YoloBatchSampler
         )
         dataset = RotatedCOCODataset(
-        data_dir='datasets/sample-rot-parking-1k/',
-        json_file='mini_json.json',
-        name='images',
+        # data_dir='datasets/sample-rot-parking-1k/',
+        # json_file='mini_json.json',
+        # name='images',
+        data_dir = 'datasets/compressed_all_desay/coco',
+        json_file='train.json',
+        name='../image',
+
         img_size=(256, 256),
         preproc=RotTrainTransform(
             rgb_means=(0.485, 0.456, 0.406),

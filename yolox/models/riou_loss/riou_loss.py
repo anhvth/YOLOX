@@ -8,7 +8,6 @@ from torch import nn
 import numpy as np
 import cv2
 from avcv.visualize import plot_images
-# from apex.apex.pyprof.examples.apex.fused_adam import target
 
 MASK_SIZE = 64  # the size at which we assume
 PAD_SIZE = MASK_SIZE//4    # buffer
@@ -143,30 +142,28 @@ def torch_normalize_input(rbox, im_w, im_h):
     norm_out = rbox/norm_tensor
     return norm_out
 
+draw_model = IoULossModel()
+draw_model.load_state_dict(torch.load(
+    "/home/av/gitprojects/yolox/weights/iou_loss_model/last.pth"))
 
 class RIoULoss(nn.Module):
     def __init__(self, img_w, img_h):
         super().__init__()
-        self.model = IoULossModel()
-        self.model.load_state_dict(torch.load(
-            "/home/av/gitprojects/yolox/weights/iou_loss_model/last.pth"))
         self.img_w = img_w
         self.img_h = img_h
         self.loss_fn = nn.functional.binary_cross_entropy
         self.ip = InputTarget()
         self.step = 0
 
-    @torch.no_grad()
     def forward(self, pred, target):
-        # return (pred-target).abs().mean()
-        self.model.eval()
+        if list(draw_model.parameters())[0].device != pred.device:
+            draw_model.to(pred.device)
+        draw_model.eval()
         bz = len(pred)
         _pred = torch_normalize_input(pred, self.img_w, self.img_h)
         _target = torch_normalize_input(target, self.img_w, self.img_h)
-        if self.step % 10 == 0:
-            self._debug(_pred, _target)
-        mask_pred = self.model(_pred).reshape(bz, -1)
-        mask_target = (self.model(_target).reshape(bz, -1) > 0.5).float()
+        mask_pred = draw_model(_pred).reshape(bz, -1)
+        mask_target = (draw_model(_target).reshape(bz, -1) > 0.5).float()
         out = self.loss_fn(mask_pred, mask_target, reduction='none').mean(1)
         self.step += 1
         return out
@@ -174,7 +171,12 @@ class RIoULoss(nn.Module):
 
     @torch.no_grad()
     def _debug(self, pred, target):
-        self.model.eval()
+        pred = torch_normalize_input(pred, self.img_w, self.img_h)
+        target = torch_normalize_input(target, self.img_w, self.img_h)
+
+        if list(draw_model.parameters())[0].device != pred.device:
+            draw_model.to(pred.device)
+        draw_model.eval()
         def get_debug_images(pred):
             reals = []
             for i in range(len(pred)):
@@ -182,8 +184,7 @@ class RIoULoss(nn.Module):
                 self.ip.set_input(cxcywha)
                 mask_pred = self.ip.show()
                 input = torch.from_numpy(self.ip.input)[None].cuda()
-                # import ipdb; ipdb.set_trace()
-                approx_pred = self.model(input)
+                approx_pred = draw_model(input)
                 approx_pred = nn.functional.interpolate(approx_pred, mask_pred.shape[:2])
                 approx_pred = approx_pred.cpu().numpy()[0,0]
                 # import ipdb; ipdb.set_trace()
