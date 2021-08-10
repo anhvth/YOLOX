@@ -56,7 +56,7 @@ def rbox_postprocess(prediction, num_classes, conf_thre=0.7, nms_thre=0.45):
     
 
 
-    output = [None for _ in range(len(prediction))]
+    output = [(None, None) for _ in range(len(prediction))]
     for i, image_pred in enumerate(prediction):
 
         # If none are remaining => process next image

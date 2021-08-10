@@ -147,21 +147,21 @@ draw_model.load_state_dict(torch.load(
     "/home/av/gitprojects/yolox/weights/iou_loss_model/last.pth"))
 
 class RIoULoss(nn.Module):
-    def __init__(self, img_w, img_h):
+    def __init__(self):
         super().__init__()
-        self.img_w = img_w
-        self.img_h = img_h
+        # self.img_w = img_w
+        # self.img_h = img_h
         self.loss_fn = nn.functional.binary_cross_entropy
         self.ip = InputTarget()
         self.step = 0
 
-    def forward(self, pred, target):
+    def forward(self, pred, target, train_size):
         if list(draw_model.parameters())[0].device != pred.device:
             draw_model.to(pred.device)
         draw_model.eval()
         bz = len(pred)
-        _pred = torch_normalize_input(pred, self.img_w, self.img_h)
-        _target = torch_normalize_input(target, self.img_w, self.img_h)
+        _pred = torch_normalize_input(pred, train_size, train_size)
+        _target = torch_normalize_input(target, train_size, train_size)
         mask_pred = draw_model(_pred).reshape(bz, -1)
         mask_target = (draw_model(_target).reshape(bz, -1) > 0.5).float()
         out = self.loss_fn(mask_pred, mask_target, reduction='none').mean(1)
@@ -170,9 +170,9 @@ class RIoULoss(nn.Module):
 
 
     @torch.no_grad()
-    def _debug(self, pred, target):
-        pred = torch_normalize_input(pred, self.img_w, self.img_h)
-        target = torch_normalize_input(target, self.img_w, self.img_h)
+    def _debug(self, pred, target, train_size):
+        pred = torch_normalize_input(pred, train_size, train_size)
+        target = torch_normalize_input(target, train_size, train_size)
 
         if list(draw_model.parameters())[0].device != pred.device:
             draw_model.to(pred.device)

@@ -9,15 +9,16 @@ import cv2
 import torch
 
 from yolox.data.data_augment import preproc
-from yolox.data.datasets import COCO_CLASSES
 from yolox.exp import get_exp
 from yolox.utils import fuse_model, get_model_info, postprocess, rbox_postprocess, vis, rvis
-
+import numpy as np
 import argparse
 import os
 import time
 
 IMAGE_EXT = [".jpg", ".jpeg", ".webp", ".bmp", ".png"]
+# from yolox.data.datasets import CLASSES
+CLASSES = ("Free", "Occupy")
 
 
 def make_parser():
@@ -96,7 +97,7 @@ class Predictor(object):
         self,
         model,
         exp,
-        cls_names=COCO_CLASSES,
+        cls_names=CLASSES,
         trt_file=None,
         decoder=None,
         device="cpu",
@@ -161,7 +162,6 @@ class Predictor(object):
 
         bboxes = output[:, 0:4]
 
-
         bboxes /= ratio
 
         rboxes /= ratio
@@ -173,16 +173,17 @@ class Predictor(object):
         return vis_res
 
 
-def image_demo(predictor, vis_folder, path, current_time, save_result):
+def image_demo(predictor: Predictor, vis_folder, path, current_time, save_result):
     if os.path.isdir(path):
         files = get_image_list(path)
     else:
         files = [path]
-    files.sort()
+    # files.sort()
+    np.random.shuffle(files)
     for image_name in files:
         outputs, img_info = predictor.inference(image_name)
         # detections, rboxes = outputs
-        
+
         # import ipdb; ipdb.set_trace()
         result_image = predictor.visual(outputs[0], img_info, predictor.confthre)
         if save_result:
@@ -286,8 +287,7 @@ def main(exp, args):
         trt_file = None
         decoder = None
 
-
-    predictor = Predictor(model, exp, COCO_CLASSES, trt_file, decoder, args.device)
+    predictor = Predictor(model, exp, CLASSES, trt_file, decoder, args.device)
     current_time = time.localtime()
     if args.demo == "image":
         image_demo(predictor, vis_folder, args.path, current_time, args.save_result)

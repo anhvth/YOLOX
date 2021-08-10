@@ -143,7 +143,7 @@ class RotatedYOLOXHead(YOLOXHead):
         self.use_l1 = False
         self.l1_loss = nn.L1Loss(reduction="none")
         self.bcewithlog_loss = nn.BCEWithLogitsLoss(reduction="none")
-        self.iou_loss = RIoULoss(640, 640)
+        self.iou_loss = RIoULoss()
         self.strides = strides
         self.grids = [torch.zeros(1)] * len(in_channels)
         self.expanded_strides = [None] * len(in_channels)
@@ -289,13 +289,13 @@ class RotatedYOLOXHead(YOLOXHead):
         num_fg = max(num_fg, 1)
         reg_preds = bbox_preds.view(-1, 5)[fg_masks]
         loss_iou = (
-            self.iou_loss(reg_preds, reg_targets)
+            self.iou_loss(reg_preds, reg_targets, max(imgs.shape[-2:]))
         ).sum() / num_fg
         
         if get_rank() == 0:
-            if self.iou_loss.step % 5 == 0:
+            if self.iou_loss.step % 50 == 0:
                 ids = np.random.choice(len(bbox_preds), 16, replace=False)
-                self.iou_loss._debug(reg_preds[ids], reg_targets[ids])
+                self.iou_loss._debug(reg_preds[ids], reg_targets[ids], max(imgs.shape[-2:]))
 
         loss_obj = (
             self.bcewithlog_loss(obj_preds.view(-1, 1), obj_targets)
