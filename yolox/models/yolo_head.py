@@ -178,7 +178,6 @@ class YOLOXHead(nn.Module):
                 if self.use_l1:
                     batch_size = reg_output.shape[0]
                     hsize, wsize = reg_output.shape[-2:]
-                    import ipdb; ipdb.set_trace()
                     reg_output = reg_output.view(
                         batch_size, self.n_anchors, 4, hsize, wsize
                     )
