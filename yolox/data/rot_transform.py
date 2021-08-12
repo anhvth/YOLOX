@@ -62,7 +62,8 @@ def _mirror(image, boxes, rot_bboxes):
     return image, boxes, rot_bboxes
 
 class RotTrainTransform:
-    def __init__(self, p=0.5, rgb_means=None, std=None, max_labels=50):
+    def __init__(self, p=0.5, rgb_means=None, std=None, max_labels=50, accepted_min_box_size=8):
+        self.accepted_min_box_size = accepted_min_box_size
         self.means = rgb_means
         self.std = std
         self.p = p
@@ -73,45 +74,49 @@ class RotTrainTransform:
         labels = targets[:, 4].copy()
         if len(boxes) == 0:
             targets = np.zeros((self.max_labels, 10), dtype=np.float32)
-            image, r_o = preproc(image, input_dim, self.means, self.std)
+            image, r_orig = preproc(image, input_dim, self.means, self.std)
             image = np.ascontiguousarray(image, dtype=np.float32)
             return image, targets
 
-        image_o = image.copy()
-        targets_o = targets.copy()
-        height_o, width_o, _ = image_o.shape
-        boxes_o = targets_o[:, :4]
-        labels_o = targets_o[:, 4]
-        # rot_bboxes_o = rboxes2points(targets_o[:, 5:])
-        rot_bboxes_o = targets_o[:, 5:]
+        image_orig = image.copy()
+        targets_orig = targets.copy()
+        height_orig, width_orig, _ = image_orig.shape
+        boxes_orig = targets_orig[:, :4]
+        labels_orig = targets_orig[:, 4]
+        # rot_bboxes_orig = rboxes2points(targets_orig[:, 5:])
+        rot_bboxes_orig = targets_orig[:, 5:]
 
-        boxes_o = xyxy2cxcywh(boxes_o)
+        boxes_orig = xyxy2cxcywh(boxes_orig)
 
-        image_t = _distort(image)
-        image_t, boxes, rot_bboxes = _mirror(image_t, boxes, rot_bboxes_o)
-        height, width, _ = image_t.shape
-        image_t, resize_ratio = preproc(image_t, input_dim, self.means, self.std)
+        image_out = _distort(image)
+        image_out, boxes, rot_bboxes = _mirror(image_out, boxes, rot_bboxes_orig)
+        height, width, _ = image_out.shape
+        image_out, resize_ratio = preproc(image_out, input_dim, self.means, self.std)
         # boxes [xyxy] 2 [cx,cy,w,h]
         boxes = xyxy2cxcywh(boxes)
         boxes *= resize_ratio
         rot_bboxes[:, :4] *= resize_ratio
 
-        valid_box_ids = np.minimum(boxes[:, 2], boxes[:, 3]) > 8
-        boxes_t = boxes[valid_box_ids]
-        labels_t = labels[valid_box_ids]
-        rot_bboxes_t = rot_bboxes[valid_box_ids]
+        valid_box_ids = np.minimum(boxes[:, 2], boxes[:, 3]) > self.accepted_min_box_size
 
-        if len(boxes_t) == 0:
-            image_t, r_o = preproc(image_o, input_dim, self.means, self.std)
-            boxes_o *= r_o
-            boxes_t = boxes_o
-            labels_t = labels_o
+        boxes_out = boxes[valid_box_ids]
+        labels_out = labels[valid_box_ids]
+        rot_bboxes_out = rot_bboxes[valid_box_ids]
+        
 
-        labels_t = np.expand_dims(labels_t, 1)
+        # if len(boxes_out) == 0:
+        #     image_out, r_orig = preproc(image_orig, input_dim, self.means, self.std)
+        #     boxes_orig *= r_orig
+        #     boxes_out = boxes_orig
+        #     labels_out = labels_orig
 
-        targets_t = np.hstack((labels_t, boxes_t, rot_bboxes_t))
+        labels_out = np.expand_dims(labels_out, 1)
+
+        assert len(labels_out) ==  len(rot_bboxes_out)
+        
+        targets_out = np.hstack((labels_out, boxes_out, rot_bboxes_out))
         padded_labels = np.zeros((self.max_labels, 10))
-        padded_labels[range(len(targets_t))[: self.max_labels]] = targets_t[:self.max_labels]
+        padded_labels[range(len(targets_out))[: self.max_labels]] = targets_out[:self.max_labels]
         padded_labels = np.ascontiguousarray(padded_labels, dtype=np.float32)
-        image_t = np.ascontiguousarray(image_t, dtype=np.float32)
-        return image_t, padded_labels
+        image_out = np.ascontiguousarray(image_out, dtype=np.float32)
+        return image_out, padded_labels
