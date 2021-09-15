@@ -12,6 +12,14 @@ from pycocotools.coco import COCO
 from ..dataloading import get_yolox_datadir
 from .datasets_wrapper import Dataset
 
+from avcv.utils import memoize,timeit
+
+
+
+# @timeit
+# @memoize
+def load_cache_coco(p):
+    return COCO(p)
 
 class COCODataset(Dataset):
     """
@@ -42,7 +50,7 @@ class COCODataset(Dataset):
         self.data_dir = data_dir
         self.json_file = json_file
 
-        self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
+        self.coco = load_cache_coco(os.path.join(self.data_dir, "annotations", self.json_file))
         self.ids = self.coco.getImgIds()
         self.class_ids = sorted(self.coco.getCatIds())
         cats = self.coco.loadCats(self.coco.getCatIds())
@@ -169,7 +177,7 @@ class COCODataset(Dataset):
         img_file = os.path.join(self.data_dir, self.name, file_name)
 
         img = cv2.imread(img_file)
-        assert img is not None
+        assert img is not None, img_file
 
         return img
 

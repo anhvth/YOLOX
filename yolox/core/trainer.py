@@ -6,10 +6,11 @@ import datetime
 import os
 import time
 from loguru import logger
-
+import mmcv
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
+import numpy as np
 
 from yolox.data import DataPrefetcher
 from yolox.utils import (
@@ -28,6 +29,7 @@ from yolox.utils import (
     setup_logger,
     synchronize
 )
+# from apex.apex.pyprof.parse.nvvp import NVVP
 
 
 class Trainer:
@@ -58,13 +60,13 @@ class Trainer:
 
         if self.rank == 0:
             os.makedirs(self.file_name, exist_ok=True)
-
-        setup_logger(
-            self.file_name,
-            distributed_rank=self.rank,
-            filename="train_log.txt",
-            mode="a",
-        )
+        if os.environ.get('DEBUGING', None) is None:
+            setup_logger(
+                self.file_name,
+                distributed_rank=self.rank,
+                filename="train_log.txt",
+                mode="a",
+            )
 
     def train(self):
         self.before_train()
@@ -74,6 +76,42 @@ class Trainer:
             raise
         finally:
             self.after_train()
+
+    def visualize(self):
+
+        # data related init
+        self.train_loader = self.exp.get_data_loader(
+            batch_size=self.args.batch_size,
+            is_distributed=False,
+            no_aug=False,
+            cache_img=False,
+        )
+        logger.info("init prefetcher, this might take one minute or less...")
+        # self.prefetcher = DataPrefetcher(self.train_loader)
+        # inps, targets = self.prefetcher.next()
+        ds = self.train_loader.dataset._dataset
+        i = 0
+
+        for img, target, img_info, img_id in ds:
+            i+=1
+            img = np.transpose(img, [1,2,0])
+            img_id = img_id[0]
+            bboxes = target[target.sum(1)!=0][:,1:]
+            imw, imh = bboxes[:,2], bboxes[:,3]
+            cx, cy = bboxes[:,0], bboxes[:,1]
+            x1 = cx-imw/2
+            y1 = cy-imh/2
+            x2 = cx+imw/2
+            y2 = cy+imh/2
+            bboxes = np.stack([x1,y1,x2,y2], 1)
+            out_file = f'cache/{img_id}.jpg'
+            img = mmcv.visualization.imshow_bboxes(img, bboxes, show=False, out_file=out_file)         
+            print(out_file)
+            if i > 100:
+                break
+
+
+        import ipdb; ipdb.set_trace()
 
     def train_in_epoch(self):
         for self.epoch in range(self.start_epoch, self.max_epoch):
