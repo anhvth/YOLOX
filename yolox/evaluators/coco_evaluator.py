@@ -8,6 +8,7 @@ import itertools
 import json
 import tempfile
 import time
+from yolox.data import dataloading
 from loguru import logger
 from tqdm import tqdm
 
@@ -56,6 +57,7 @@ class COCOEvaluator:
         trt_file=None,
         decoder=None,
         test_size=None,
+        out_file=None,
     ):
         """
         COCO average precision (AP) Evaluation. Iterate inference on the test dataset
@@ -93,7 +95,6 @@ class COCOEvaluator:
             x = torch.ones(1, 3, test_size[0], test_size[1]).cuda()
             model(x)
             model = model_trt
-
         for cur_iter, (imgs, _, info_imgs, ids) in enumerate(
             progress_bar(self.dataloader)
         ):
@@ -116,12 +117,16 @@ class COCOEvaluator:
                 outputs = postprocess(
                     outputs, self.num_classes, self.confthre, self.nmsthre
                 )
+
+                
                 if is_time_record:
                     nms_end = time_synchronized()
                     nms_time += nms_end - infer_end
 
             data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
-
+        if out_file is not None:
+            import mmcv
+            mmcv.dump(data_list, out_file)
         statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
         if distributed:
             data_list = gather(data_list, dst=0)

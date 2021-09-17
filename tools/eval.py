@@ -127,8 +127,8 @@ def main(exp, args, num_gpu):
 
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
-
-    setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+    if os.environ.get('DEBUGING', '0') == '0':
+        setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
@@ -181,8 +181,10 @@ def main(exp, args, num_gpu):
         decoder = None
 
     # start evaluate
+    # import ipdb; ipdb.set_trace()
+    out_file = os.path.join(args.ckpt)+'_eval_out.pkl'
     *_, summary = evaluator.evaluate(
-        model, is_distributed, args.fp16, trt_file, decoder, exp.test_size
+        model, is_distributed, args.fp16, trt_file, decoder, exp.test_size, out_file=out_file
     )
     logger.info("\n" + summary)
 

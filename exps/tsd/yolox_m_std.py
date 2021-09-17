@@ -12,7 +12,7 @@ import torch.distributed as dist
 import os
 from yolox.exp import Exp as MyExp
 from avcv.utils import memoize
-
+import torch
 
 
 
@@ -28,11 +28,15 @@ class Exp(MyExp):
         self.train_ann = "train.json"
         self.val_ann = "test.json"
 
-        self.num_classes = 71
+        self.num_classes = 6
 
-        self.max_epoch = 300
-        self.data_num_workers = 4
+        self.max_epoch = 80
+        self.no_aug_epochs = 5
+        self.data_num_workers = 8
         self.eval_interval = 1
+
+        # test
+        self.test_size = (800,800)
 
 
     def get_data_loader(
@@ -110,3 +114,32 @@ class Exp(MyExp):
         train_loader = DataLoader(self.dataset, **dataloader_kwargs)
 
         return train_loader
+
+    def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False):
+        from yolox.data import COCODataset, ValTransform
+
+        valdataset = COCODataset(
+            data_dir=self.data_dir,
+            json_file=self.val_ann,
+            name="test-images",
+            img_size=self.test_size,
+            preproc=ValTransform(legacy=legacy),
+        )
+
+        if is_distributed:
+            batch_size = batch_size // dist.get_world_size()
+            sampler = torch.utils.data.distributed.DistributedSampler(
+                valdataset, shuffle=False
+            )
+        else:
+            sampler = torch.utils.data.SequentialSampler(valdataset)
+
+        dataloader_kwargs = {
+            "num_workers": self.data_num_workers,
+            "pin_memory": True,
+            "sampler": sampler,
+        }
+        dataloader_kwargs["batch_size"] = batch_size
+        val_loader = torch.utils.data.DataLoader(valdataset, **dataloader_kwargs)
+
+        return val_loader
