@@ -162,7 +162,10 @@ class Predictor(object):
                 outputs, self.num_classes, self.confthre,
                 self.nmsthre, class_agnostic=True
             )
-            logger.info("Infer time: {:.4f}s".format(time.time() - t0))
+            delta = time.time() - t0
+            fps = 1/delta
+            logger.info("Infer time: {:.4f}s {:0.4f} imgs/s".format(delta, fps))
+            # logger.info("Infer time: {:.4f}s".format())
         return outputs, img_info
 
     def visual(self, output, img_info, cls_conf=0.35):

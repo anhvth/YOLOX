@@ -93,25 +93,25 @@ class Trainer:
         i = 0
 
         for img, target, img_info, img_id in ds:
-            i+=1
-            img = np.transpose(img, [1,2,0])
+            i += 1
+            img = np.transpose(img, [1, 2, 0])
             img_id = img_id[0]
-            bboxes = target[target.sum(1)!=0][:,1:]
-            imw, imh = bboxes[:,2], bboxes[:,3]
-            cx, cy = bboxes[:,0], bboxes[:,1]
+            bboxes = target[target.sum(1) != 0][:, 1:]
+            imw, imh = bboxes[:, 2], bboxes[:, 3]
+            cx, cy = bboxes[:, 0], bboxes[:, 1]
             x1 = cx-imw/2
             y1 = cy-imh/2
             x2 = cx+imw/2
             y2 = cy+imh/2
-            bboxes = np.stack([x1,y1,x2,y2], 1)
+            bboxes = np.stack([x1, y1, x2, y2], 1)
             out_file = f'cache/{img_id}.jpg'
-            img = mmcv.visualization.imshow_bboxes(img, bboxes, show=False, out_file=out_file)         
+            img = mmcv.visualization.imshow_bboxes(img, bboxes, show=False, out_file=out_file)
             print(out_file)
             if i > 100:
                 break
 
-
-        import ipdb; ipdb.set_trace()
+        import ipdb
+        ipdb.set_trace()
 
     def train_in_epoch(self):
         for self.epoch in range(self.start_epoch, self.max_epoch):
@@ -236,6 +236,9 @@ class Trainer:
             self.exp.eval_interval = 1
             if not self.no_aug:
                 self.save_ckpt(ckpt_name="last_mosaic_epoch")
+                
+            if self.exp.ckpt_interval is not None and self.epoch % self.exp.ckpt_interval == 0:
+                self.save_ckpt(ckpt_name=f"epoch_{self.epoch}")
 
     def after_epoch(self):
         self.save_ckpt(ckpt_name="latest")

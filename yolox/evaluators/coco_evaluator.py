@@ -124,15 +124,15 @@ class COCOEvaluator:
                     nms_time += nms_end - infer_end
 
             data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
-        if out_file is not None:
-            import mmcv
-            mmcv.dump(data_list, out_file)
         statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
         if distributed:
             data_list = gather(data_list, dst=0)
             data_list = list(itertools.chain(*data_list))
             torch.distributed.reduce(statistics, dst=0)
 
+        if out_file is not None:
+            import mmcv
+            mmcv.dump(data_list, out_file)
         eval_results = self.evaluate_prediction(data_list, statistics)
         synchronize()
         return eval_results

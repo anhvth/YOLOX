@@ -31,12 +31,14 @@ class Exp(MyExp):
         self.num_classes = 6
 
         self.max_epoch = 80
-        self.no_aug_epochs = 5
+        self.no_aug_epochs = 15
         self.data_num_workers = 8
         self.eval_interval = 1
 
+        self.input_size = (640,640)
+
         # test
-        self.test_size = (800,800)
+        self.test_size = (640,640)
 
 
     def get_data_loader(

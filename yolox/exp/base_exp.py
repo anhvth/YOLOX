@@ -67,7 +67,9 @@ class BaseExp(metaclass=ABCMeta):
             if hasattr(self, k):
                 src_value = getattr(self, k)
                 src_type = type(src_value)
-                if src_value is not None and src_type != type(v):
+                if src_type == tuple:
+                    v = eval(v)
+                elif src_value is not None and src_type != type(v):
                     try:
                         v = src_type(v)
                     except Exception:

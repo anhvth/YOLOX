@@ -10,7 +10,9 @@ import cv2
 import megengine as mge
 import megengine.functional as F
 from loguru import logger
-
+from mmcv import Timer
+from tqdm import tqdm
+import numpy as np
 from yolox.data.datasets import COCO_CLASSES
 from yolox.utils import vis
 from yolox.data.data_augment import preproc as preprocess
@@ -130,7 +132,9 @@ class Predictor(object):
         t0 = time.time()
         outputs = self.model(img)
         outputs = postprocess(outputs, self.num_classes, self.confthre, self.nmsthre)
-        logger.info("Infer time: {:.4f}s".format(time.time() - t0))
+        delta = time.time() - t0
+        fps = 1/delta
+        logger.info("Infer time: {:.4f}s {:0.4f} imgs/s".format(delta, fps))
         return outputs, img_info
 
     def visual(self, output, img_info, cls_conf=0.35):
@@ -151,13 +155,17 @@ class Predictor(object):
 
 
 def image_demo(predictor, vis_folder, path, current_time, save_result):
+
     if os.path.isdir(path):
         files = get_image_list(path)
     else:
         files = [path]
     files.sort()
+    infer_times = []
+    timer = Timer()
     for image_name in files:
         outputs, img_info = predictor.inference(image_name)
+        infer_times.append(timer.since_last_check())
         result_image = predictor.visual(outputs[0], img_info)
         if save_result:
             save_folder = os.path.join(

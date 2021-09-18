@@ -30,8 +30,9 @@ def parse_args():
 
 def main():
     args = parse_args()
-    gt = COCO('datasets/tsd/vinai_bdi_combined/annotations/test.json',)
-    pred = gt.loadRes(mmcv.load(args.output))
+    gt = COCO('datasets/tsd/vinai_bdi_combined/annotations/test.json')
+    output = mmcv.load(args.output)
+    pred = gt.loadRes(output)
     cocoEval = COCOeval(gt, pred, 'bbox')
     # cocoEval.params.iouThrs = np.array([0.5 , 0.55, 0.6 , 0.65, 0.7 , 0.75, 0.8 , 0.85, 0.9 , 0.95])
     cocoEval.params.iouThrs = np.array([0.5])
@@ -60,7 +61,7 @@ def main():
         results_per_category.append(
             (f'{nm["name"]}', f'{float(ap):0.3f}'))
 
-    num_columns = min(6, len(results_per_category) * 2)
+    num_columns = min(2, len(results_per_category) * 2)
     results_flatten = list(
         itertools.chain(*results_per_category))
     headers = ['category', 'AP'] * (num_columns // 2)
