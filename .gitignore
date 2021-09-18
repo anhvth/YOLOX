@@ -219,3 +219,4 @@ events.out.tfevents*
 data
 cache
 apex
+demo/tsd/demo_output/
