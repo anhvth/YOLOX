@@ -12,7 +12,7 @@ from pycocotools.coco import COCO
 from ..dataloading import get_yolox_datadir
 from .datasets_wrapper import Dataset
 
-from avcv.utils import memoize,timeit
+# from avcv.utils import memoize,timeit
 
 
 

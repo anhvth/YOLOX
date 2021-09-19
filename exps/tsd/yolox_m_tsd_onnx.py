@@ -11,7 +11,6 @@ import torch.distributed as dist
 
 import os
 from yolox.exp import Exp as MyExp
-from avcv.utils import memoize
 import torch
 import torch.nn as nn
 

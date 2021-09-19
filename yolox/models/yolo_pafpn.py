@@ -122,10 +122,12 @@ class YOLOPAFPN_ONNX(YOLOPAFPN):
         super(YOLOPAFPN_ONNX, self).__init__(*args, **kwargs)
         del self.upsample
         in_c = 384
-        self.ul0 = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c)
+        self.ul0 = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c, bias=False)
+        self.ul0.weight = torch.nn.Parameter(torch.ones_like(self.ul0.weight)/16)
 
         in_c = 192
-        self.ul1 = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c)
+        self.ul1 = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c, bias=False)
+        self.ul1.weight = torch.nn.Parameter(torch.ones_like(self.ul1.weight)/16)
 
 
     def forward(self, input):
@@ -145,7 +147,8 @@ class YOLOPAFPN_ONNX(YOLOPAFPN):
         [x2, x1, x0] = features
 
         fpn_out0 = self.lateral_conv0(x0)  # 1024->512/32
-        f_out0 = self.ul0(fpn_out0)
+        with torch.no_grad():
+            f_out0 = self.ul0(fpn_out0)
         # return f_out0
         f_out0 = torch.cat([f_out0, x1], 1)  # 512->1024/16
 
@@ -154,7 +157,8 @@ class YOLOPAFPN_ONNX(YOLOPAFPN):
         fpn_out1 = self.reduce_conv1(f_out0)  # 512->256/16
 
         f_out1 = self.ul1(fpn_out1)
-        f_out1 = torch.cat([f_out1, x2], 1)  # 256->512/8
+        with torch.no_grad():
+            f_out1 = torch.cat([f_out1, x2], 1)  # 256->512/8
         pan_out2 = self.C3_p3(f_out1)  # 512->256/8
 
         p_out1 = self.bu_conv2(pan_out2)  # 256->256/16
