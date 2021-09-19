@@ -185,6 +185,8 @@ class CSPLayer(nn.Module):
         return self.conv3(x)
 
 
+
+
 class Focus(nn.Module):
     """Focus width and height information into channel space."""
 
@@ -208,3 +210,40 @@ class Focus(nn.Module):
             dim=1,
         )
         return self.conv(x)
+
+
+import torch
+
+def create_conv(j=(0,0), C=3):
+    w = torch.zeros([C,1,2,2])
+    w[:,:,j[0],j[1]] = 1
+
+    w = torch.nn.parameter.Parameter(w)
+    conv_shuffle = nn.Conv2d(C,C, kernel_size=(2,2), stride=(2,2), padding=(0,0), bias=False, groups=C)
+    conv_shuffle.weight = w
+    conv_shuffle.weight.requires_grad = False
+    return conv_shuffle
+
+class ShuffleConv(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv_tl = create_conv(C=3, j=(0,0))
+        self.conv_tr = create_conv(C=3, j=(0,1))
+        self.conv_bl = create_conv(C=3, j=(1,0))
+        self.conv_br = create_conv(C=3, j=(1,1))
+
+    def forward(self,x):
+        with torch.no_grad():
+            out= torch.cat([self.conv_tl(x), self.conv_bl(x), self.conv_tr(x), self.conv_br(x)], 1)
+        return out
+
+class FocusOnnx(Focus):
+    def __init__(self, *args, **kwarsg):
+        super(FocusOnnx, self).__init__(*args, **kwarsg)
+        self.shufle_conv = ShuffleConv()
+
+    def forward(self, x):
+        x = self.shufle_conv(x)
+        return self.conv(x)
+
+
