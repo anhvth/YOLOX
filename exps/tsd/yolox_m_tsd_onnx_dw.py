@@ -30,8 +30,8 @@ class Exp(MyExp):
 
         self.num_classes = 6
 
-        self.max_epoch = 20
-        self.no_aug_epochs = 5
+        self.max_epoch = 45
+        self.no_aug_epochs = 10
         self.data_num_workers = 8
         self.eval_interval = 1
 
@@ -156,8 +156,8 @@ class Exp(MyExp):
 
         if getattr(self, "model", None) is None:
             in_channels = [256, 512, 1024]
-            backbone = YOLOPAFPN_ONNX(self.depth, self.width, in_channels=in_channels)
-            head = YOLOXHead(self.num_classes, self.width, in_channels=in_channels)
+            backbone = YOLOPAFPN_ONNX(self.depth, self.width, in_channels=in_channels, depthwise=True)
+            head = YOLOXHead(self.num_classes, self.width, in_channels=in_channels, depthwise=True)
             self.model = YOLOX(backbone, head)
 
         self.model.apply(init_yolo)

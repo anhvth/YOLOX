@@ -147,18 +147,14 @@ class YOLOPAFPN_ONNX(YOLOPAFPN):
         [x2, x1, x0] = features
 
         fpn_out0 = self.lateral_conv0(x0)  # 1024->512/32
-        with torch.no_grad():
-            f_out0 = self.ul0(fpn_out0)
-        # return f_out0
+        f_out0 = self.ul0(fpn_out0)
         f_out0 = torch.cat([f_out0, x1], 1)  # 512->1024/16
 
         f_out0 = self.C3_p4(f_out0)  # 1024->512/16
-        # return f_out0
         fpn_out1 = self.reduce_conv1(f_out0)  # 512->256/16
 
         f_out1 = self.ul1(fpn_out1)
-        with torch.no_grad():
-            f_out1 = torch.cat([f_out1, x2], 1)  # 256->512/8
+        f_out1 = torch.cat([f_out1, x2], 1)  # 256->512/8
         pan_out2 = self.C3_p3(f_out1)  # 512->256/8
 
         p_out1 = self.bu_conv2(pan_out2)  # 256->256/16
