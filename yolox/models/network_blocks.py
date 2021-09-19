@@ -231,38 +231,17 @@ class ShuffleConv(nn.Module):
         self.conv_br = create_conv(C=3, j=(1,1))
 
     def forward(self,x):
-        return torch.cat([self.conv_tl(x), self.conv_bl(x), self.conv_tr(x), self.conv_br(x)], 1)
+        with torch.no_grad():
+            out= torch.cat([self.conv_tl(x), self.conv_bl(x), self.conv_tr(x), self.conv_br(x)], 1)
+        return out
 
 class FocusOnnx(Focus):
     def __init__(self, *args, **kwarsg):
         super(FocusOnnx, self).__init__(*args, **kwarsg)
-        # self.c = 3
-        # self.w = self.h = 640
-        # inp = torch.arange(1*self.c*self.h*self.w).reshape([1,self.c,self.h,self.w])
-        # out_fc = self._forward(inp)
-
-        # self.map_ids = out_fc.view(-1).cpu().numpy()
         self.shufle_conv = ShuffleConv()
 
     def forward(self, x):
-        with torch.no_grad():
-            x = self.shufle_conv(x)
+        x = self.shufle_conv(x)
         return self.conv(x)
 
 
-    def _forward(self, x):
-        # shape of x (b,c,w,h) -> y(b,4c,w/2,h/2)
-        patch_top_left = x[..., ::2, ::2]
-        patch_top_right = x[..., ::2, 1::2]
-        patch_bot_left = x[..., 1::2, ::2]
-        patch_bot_right = x[..., 1::2, 1::2]
-        x = torch.cat(
-            (
-                patch_top_left,
-                patch_bot_left,
-                patch_top_right,
-                patch_bot_right,
-            ),
-            dim=1,
-        )
-        return x
