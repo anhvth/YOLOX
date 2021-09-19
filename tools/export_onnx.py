@@ -94,7 +94,6 @@ def main():
         opset_version=args.opset,
     )
     logger.info("generated onnx model named {}".format(args.output_name))
-
     if not args.no_onnxsim:
         import onnx
 

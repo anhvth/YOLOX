@@ -165,7 +165,9 @@ class CSPDarknet(nn.Module):
         )
 
     def forward(self, x):
+
         outputs = {}
+        
         x = self.stem(x)
         outputs["stem"] = x
         x = self.dark2(x)
