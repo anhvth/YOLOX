@@ -281,7 +281,7 @@ def main(exp, args):
         logger.info("loading checkpoint")
         ckpt = torch.load(ckpt_file, map_location="cpu")
         # load the model state dict
-        model.load_state_dict(ckpt["model"])
+        model.load_state_dict(ckpt["model"], strict=False)
         logger.info("loaded checkpoint done.")
 
     if args.fuse:
