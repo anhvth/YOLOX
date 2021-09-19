@@ -76,7 +76,7 @@ def main():
     model.eval()
     if "model" in ckpt:
         ckpt = ckpt["model"]
-    model.load_state_dict(ckpt)
+    model.load_state_dict(ckpt, strict=False)
     model = replace_module(model, nn.SiLU, SiLU)
     model.head.decode_in_inference = False
 

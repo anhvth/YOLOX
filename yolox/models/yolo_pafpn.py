@@ -79,6 +79,12 @@ class YOLOPAFPN(nn.Module):
             depthwise=depthwise,
             act=act,
         )
+        in_c = 384
+        self.ul0 = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c)
+
+        in_c = 192
+        self.ul1 = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c)
+
 
     def forward(self, input):
         """
@@ -91,16 +97,32 @@ class YOLOPAFPN(nn.Module):
 
         #  backbone
         out_features = self.backbone(input)
+        # return out_features
+        # return out_features
         features = [out_features[f] for f in self.in_features]
         [x2, x1, x0] = features
 
         fpn_out0 = self.lateral_conv0(x0)  # 1024->512/32
-        f_out0 = self.upsample(fpn_out0)  # 512/16
+        if torch.onnx.is_in_onnx_export:
+            # f_out0 = torch.nn.functional.interpolate(fpn_out0, size=(40, 40))
+            # in_c = int(fpn_out0.size(1))
+            # 
+            f_out0 = self.ul0(fpn_out0)
+        else:
+            f_out0 = self.upsample(fpn_out0)  # 512/16
+        # return f_out0
         f_out0 = torch.cat([f_out0, x1], 1)  # 512->1024/16
-        f_out0 = self.C3_p4(f_out0)  # 1024->512/16
 
+        f_out0 = self.C3_p4(f_out0)  # 1024->512/16
+        # return f_out0
         fpn_out1 = self.reduce_conv1(f_out0)  # 512->256/16
-        f_out1 = self.upsample(fpn_out1)  # 256/8
+        if torch.onnx.is_in_onnx_export:
+            # f_out1 = torch.nn.functional.interpolate(fpn_out1, size=(80, 80))
+            # in_c = int(fpn_out1.size(1))
+            # ul = nn.ConvTranspose2d(in_c, in_c, 4, stride=2, padding=1, groups=in_c)
+            f_out1 = self.ul1(fpn_out1)
+        else:
+            f_out1 = self.upsample(fpn_out1)  # 256/8
         f_out1 = torch.cat([f_out1, x2], 1)  # 256->512/8
         pan_out2 = self.C3_p3(f_out1)  # 512->256/8
 

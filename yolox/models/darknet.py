@@ -3,10 +3,7 @@
 # Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
 
 from torch import nn
-
-from .network_blocks import BaseConv, CSPLayer, DWConv, Focus, ResLayer, SPPBottleneck
-
-
+from .network_blocks import BaseConv, CSPLayer, DWConv, ResLayer, SPPBottleneck, FocusOnnx, Focus
 class Darknet(nn.Module):
     # number of blocks from dark2 to dark5.
     depth2blocks = {21: [1, 2, 2, 1], 53: [2, 8, 8, 4]}
@@ -93,7 +90,6 @@ class Darknet(nn.Module):
         outputs["dark5"] = x
         return {k: v for k, v in outputs.items() if k in self.out_features}
 
-
 class CSPDarknet(nn.Module):
     def __init__(
         self,
@@ -101,6 +97,7 @@ class CSPDarknet(nn.Module):
         wid_mul,
         out_features=("dark3", "dark4", "dark5"),
         depthwise=False,
+        is_onnx_export=False,
         act="silu",
     ):
         super().__init__()
@@ -112,7 +109,10 @@ class CSPDarknet(nn.Module):
         base_depth = max(round(dep_mul * 3), 1)  # 3
 
         # stem
-        self.stem = Focus(3, base_channels, ksize=3, act=act)
+        if is_onnx_export:
+            self.stem = FocusOnnx(3, base_channels, ksize=3, act=act)
+        else:
+            self.stem = Focus(3, base_channels, ksize=3, act=act)
 
         # dark2
         self.dark2 = nn.Sequential(

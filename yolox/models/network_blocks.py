@@ -48,6 +48,7 @@ class BaseConv(nn.Module):
         self.act = get_activation(act, inplace=True)
 
     def forward(self, x):
+
         return self.act(self.bn(self.conv(x)))
 
     def fuseforward(self, x):
@@ -208,3 +209,60 @@ class Focus(nn.Module):
             dim=1,
         )
         return self.conv(x)
+
+import torch
+
+def create_conv(j=(0,0), C=3):
+    w = torch.zeros([C,1,2,2])
+    w[:,:,j[0],j[1]] = 1
+
+    w = torch.nn.parameter.Parameter(w)
+    conv_shuffle = nn.Conv2d(C,C, kernel_size=(2,2), stride=(2,2), padding=(0,0), bias=False, groups=C)
+    conv_shuffle.weight = w
+    conv_shuffle.weight.requires_grad = False
+    return conv_shuffle
+
+class ShuffleConv(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv_tl = create_conv(C=3, j=(0,0))
+        self.conv_tr = create_conv(C=3, j=(0,1))
+        self.conv_bl = create_conv(C=3, j=(1,0))
+        self.conv_br = create_conv(C=3, j=(1,1))
+
+    def forward(self,x):
+        return torch.cat([self.conv_tl(x), self.conv_bl(x), self.conv_tr(x), self.conv_br(x)], 1)
+
+class FocusOnnx(Focus):
+    def __init__(self, *args, **kwarsg):
+        super(FocusOnnx, self).__init__(*args, **kwarsg)
+        # self.c = 3
+        # self.w = self.h = 640
+        # inp = torch.arange(1*self.c*self.h*self.w).reshape([1,self.c,self.h,self.w])
+        # out_fc = self._forward(inp)
+
+        # self.map_ids = out_fc.view(-1).cpu().numpy()
+        self.shufle_conv = ShuffleConv()
+
+    def forward(self, x):
+        with torch.no_grad():
+            x = self.shufle_conv(x)
+        return self.conv(x)
+
+
+    def _forward(self, x):
+        # shape of x (b,c,w,h) -> y(b,4c,w/2,h/2)
+        patch_top_left = x[..., ::2, ::2]
+        patch_top_right = x[..., ::2, 1::2]
+        patch_bot_left = x[..., 1::2, ::2]
+        patch_bot_right = x[..., 1::2, 1::2]
+        x = torch.cat(
+            (
+                patch_top_left,
+                patch_bot_left,
+                patch_top_right,
+                patch_bot_right,
+            ),
+            dim=1,
+        )
+        return x
