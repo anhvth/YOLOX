@@ -2,6 +2,9 @@
 # -*- coding:utf-8 -*-
 # Copyright (c) Megvii, Inc. and its affiliates.
 
+import argparse
+import os
+import shutil
 from loguru import logger
 
 import tensorrt as trt
@@ -9,10 +12,6 @@ import torch
 from torch2trt import torch2trt
 
 from yolox.exp import get_exp
-
-import argparse
-import os
-import shutil
 
 
 def make_parser():
@@ -25,13 +24,18 @@ def make_parser():
         "--exp_file",
         default=None,
         type=str,
-        help="pls input your expriment description file",
+        help="please input your experiment description file",
     )
     parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt path")
+    parser.add_argument(
+        "-w", '--workspace', type=int, default=32, help='max workspace size in detect'
+    )
+    parser.add_argument("-b", '--batch', type=int, default=1, help='max batch size in detect')
     return parser
 
 
 @logger.catch
+@torch.no_grad()
 def main():
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
@@ -42,7 +46,7 @@ def main():
     file_name = os.path.join(exp.output_dir, args.experiment_name)
     os.makedirs(file_name, exist_ok=True)
     if args.ckpt is None:
-        ckpt_file = os.path.join(file_name, "best_ckpt.pth.tar")
+        ckpt_file = os.path.join(file_name, "best_ckpt.pth")
     else:
         ckpt_file = args.ckpt
 
@@ -60,7 +64,8 @@ def main():
         [x],
         fp16_mode=True,
         log_level=trt.Logger.INFO,
-        max_workspace_size=(1 << 32),
+        max_workspace_size=(1 << args.workspace),
+        max_batch_size=args.batch,
     )
     torch.save(model_trt.state_dict(), os.path.join(file_name, "model_trt.pth"))
     logger.info("Converted TensorRT model done.")

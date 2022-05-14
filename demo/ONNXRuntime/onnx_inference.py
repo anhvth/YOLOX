@@ -64,9 +64,7 @@ if __name__ == '__main__':
 
     input_shape = tuple(map(int, args.input_shape.split(',')))
     origin_img = cv2.imread(args.image_path)
-    mean = (0.485, 0.456, 0.406)
-    std = (0.229, 0.224, 0.225)
-    img, ratio = preprocess(origin_img, input_shape, mean, std)
+    img, ratio = preprocess(origin_img, input_shape)
 
     session = onnxruntime.InferenceSession(args.model)
 
@@ -90,5 +88,5 @@ if __name__ == '__main__':
                          conf=args.score_thr, class_names=COCO_CLASSES)
 
     mkdir(args.output_dir)
-    output_path = os.path.join(args.output_dir, args.image_path.split("/")[-1])
+    output_path = os.path.join(args.output_dir, os.path.basename(args.image_path))
     cv2.imwrite(output_path, origin_img)

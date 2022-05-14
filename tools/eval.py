@@ -2,6 +2,10 @@
 # -*- coding:utf-8 -*-
 # Copyright (c) Megvii, Inc. and its affiliates.
 
+import argparse
+import os
+import random
+import warnings
 from loguru import logger
 
 import torch
@@ -10,12 +14,14 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from yolox.core import launch
 from yolox.exp import get_exp
-from yolox.utils import configure_nccl, fuse_model, get_local_rank, get_model_info, setup_logger
-
-import argparse
-import os
-import random
-import warnings
+from yolox.utils import (
+    configure_module,
+    configure_nccl,
+    fuse_model,
+    get_local_rank,
+    get_model_info,
+    setup_logger
+)
 
 
 def make_parser():
@@ -38,9 +44,6 @@ def make_parser():
         "-d", "--devices", default=None, type=int, help="device for training"
     )
     parser.add_argument(
-        "--local_rank", default=0, type=int, help="local rank for dist training"
-    )
-    parser.add_argument(
         "--num_machines", default=1, type=int, help="num of node for training"
     )
     parser.add_argument(
@@ -51,7 +54,7 @@ def make_parser():
         "--exp_file",
         default=None,
         type=str,
-        help="pls input your expriment description file",
+        help="please input your experiment description file",
     )
     parser.add_argument("-c", "--ckpt", default=None, type=str, help="ckpt for eval")
     parser.add_argument("--conf", default=None, type=float, help="test conf")
@@ -78,6 +81,13 @@ def make_parser():
         default=False,
         action="store_true",
         help="Using TensorRT model for testing.",
+    )
+    parser.add_argument(
+        "--legacy",
+        dest="legacy",
+        default=False,
+        action="store_true",
+        help="To be compatible with older versions",
     )
     parser.add_argument(
         "--test",
@@ -115,10 +125,10 @@ def main(exp, args, num_gpu):
     is_distributed = num_gpu > 1
 
     # set environment variables for distributed training
+    configure_nccl()
     cudnn.benchmark = True
 
-    rank = args.local_rank
-    # rank = get_local_rank()
+    rank = get_local_rank()
 
     file_name = os.path.join(exp.output_dir, args.experiment_name)
 
@@ -139,7 +149,9 @@ def main(exp, args, num_gpu):
     logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
     logger.info("Model Structure:\n{}".format(str(model)))
 
-    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test)
+    evaluator = exp.get_evaluator(args.batch_size, is_distributed, args.test, args.legacy)
+    evaluator.per_class_AP = True
+    evaluator.per_class_AR = True
 
     torch.cuda.set_device(rank)
     model.cuda(rank)
@@ -147,13 +159,12 @@ def main(exp, args, num_gpu):
 
     if not args.speed and not args.trt:
         if args.ckpt is None:
-            ckpt_file = os.path.join(file_name, "best_ckpt.pth.tar")
+            ckpt_file = os.path.join(file_name, "best_ckpt.pth")
         else:
             ckpt_file = args.ckpt
-        logger.info("loading checkpoint")
+        logger.info("loading checkpoint from {}".format(ckpt_file))
         loc = "cuda:{}".format(rank)
         ckpt = torch.load(ckpt_file, map_location=loc)
-        # load the model state dict
         model.load_state_dict(ckpt["model"])
         logger.info("loaded checkpoint done.")
 
@@ -186,6 +197,7 @@ def main(exp, args, num_gpu):
 
 
 if __name__ == "__main__":
+    configure_module()
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
@@ -196,12 +208,13 @@ if __name__ == "__main__":
     num_gpu = torch.cuda.device_count() if args.devices is None else args.devices
     assert num_gpu <= torch.cuda.device_count()
 
+    dist_url = "auto" if args.dist_url is None else args.dist_url
     launch(
         main,
         num_gpu,
         args.num_machines,
         args.machine_rank,
         backend=args.dist_backend,
-        dist_url=args.dist_url,
+        dist_url=dist_url,
         args=(exp, args, num_gpu),
     )

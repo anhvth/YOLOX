@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
+# Copyright (c) Megvii Inc. All rights reserved.
 
 import megengine.functional as F
 import megengine.module as M
@@ -26,7 +26,7 @@ class YOLOXHead(M.Module):
         """
         Args:
             act (str): activation type of conv. Defalut value: "silu".
-            depthwise (bool): wheather apply depthwise conv in conv branch. Defalut value: False.
+            depthwise (bool): whether apply depthwise conv in conv branch. Defalut value: False.
         """
         super().__init__()
 
@@ -123,7 +123,6 @@ class YOLOXHead(M.Module):
         self.use_l1 = False
         self.strides = strides
         self.grids = [F.zeros(1)] * len(in_channels)
-        self.expanded_strides = [None] * len(in_channels)
 
     def forward(self, xin, labels=None, imgs=None):
         outputs = []

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-# Copyright (c) 2014-2021 Megvii Inc. All rights reserved.
+# Copyright (c) Megvii Inc. All rights reserved.
+
+import ast
+import pprint
+from abc import ABCMeta, abstractmethod
+from typing import Dict
+from tabulate import tabulate
 
 import torch
 from torch.nn import Module
 
 from yolox.utils import LRScheduler
-
-import ast
-import pprint
-from abc import ABCMeta, abstractmethod
-from tabulate import tabulate
-from typing import Dict
 
 
 class BaseExp(metaclass=ABCMeta):

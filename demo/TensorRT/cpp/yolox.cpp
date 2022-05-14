@@ -30,6 +30,7 @@ using namespace nvinfer1;
 // stuff we know about the network and the input/output blobs
 static const int INPUT_W = 640;
 static const int INPUT_H = 640;
+static const int NUM_CLASSES = 80;
 const char* INPUT_BLOB_NAME = "input_0";
 const char* OUTPUT_BLOB_NAME = "output_0";
 static Logger gLogger;
@@ -41,7 +42,7 @@ cv::Mat static_resize(cv::Mat& img) {
     int unpad_h = r * img.rows;
     cv::Mat re(unpad_h, unpad_w, CV_8UC3);
     cv::resize(img, re, re.size());
-    cv::Mat out(INPUT_W, INPUT_H, CV_8UC3, cv::Scalar(114, 114, 114));
+    cv::Mat out(INPUT_H, INPUT_W, CV_8UC3, cv::Scalar(114, 114, 114));
     re.copyTo(out(cv::Rect(0, 0, re.cols, re.rows)));
     return out;
 }
@@ -60,14 +61,15 @@ struct GridAndStride
     int stride;
 };
 
-static void generate_grids_and_stride(const int target_size, std::vector<int>& strides, std::vector<GridAndStride>& grid_strides)
+static void generate_grids_and_stride(std::vector<int>& strides, std::vector<GridAndStride>& grid_strides)
 {
     for (auto stride : strides)
     {
-        int num_grid = target_size / stride;
-        for (int g1 = 0; g1 < num_grid; g1++)
+        int num_grid_y = INPUT_H / stride;
+        int num_grid_x = INPUT_W / stride;
+        for (int g1 = 0; g1 < num_grid_y; g1++)
         {
-            for (int g0 = 0; g0 < num_grid; g0++)
+            for (int g0 = 0; g0 < num_grid_x; g0++)
             {
                 grid_strides.push_back((GridAndStride){g0, g1, stride});
             }
@@ -163,7 +165,6 @@ static void nms_sorted_bboxes(const std::vector<Object>& faceobjects, std::vecto
 
 static void generate_yolox_proposals(std::vector<GridAndStride> grid_strides, float* feat_blob, float prob_threshold, std::vector<Object>& objects)
 {
-    const int num_class = 80;
 
     const int num_anchors = grid_strides.size();
 
@@ -173,7 +174,7 @@ static void generate_yolox_proposals(std::vector<GridAndStride> grid_strides, fl
         const int grid1 = grid_strides[anchor_idx].grid1;
         const int stride = grid_strides[anchor_idx].stride;
 
-        const int basic_pos = anchor_idx * 85;
+        const int basic_pos = anchor_idx * (NUM_CLASSES + 5);
 
         // yolox/models/yolo_head.py decode logic
         float x_center = (feat_blob[basic_pos+0] + grid0) * stride;
@@ -184,7 +185,7 @@ static void generate_yolox_proposals(std::vector<GridAndStride> grid_strides, fl
         float y0 = y_center - h * 0.5f;
 
         float box_objectness = feat_blob[basic_pos+4];
-        for (int class_idx = 0; class_idx < num_class; class_idx++)
+        for (int class_idx = 0; class_idx < NUM_CLASSES; class_idx++)
         {
             float box_cls_score = feat_blob[basic_pos + 5 + class_idx];
             float box_prob = box_objectness * box_cls_score;
@@ -207,14 +208,10 @@ static void generate_yolox_proposals(std::vector<GridAndStride> grid_strides, fl
 }
 
 float* blobFromImage(cv::Mat& img){
-    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-
     float* blob = new float[img.total()*3];
     int channels = 3;
-    int img_h = 640;
-    int img_w = 640;
-    std::vector<float> mean = {0.485, 0.456, 0.406};
-    std::vector<float> std = {0.229, 0.224, 0.225};
+    int img_h = img.rows;
+    int img_w = img.cols;
     for (size_t c = 0; c < channels; c++) 
     {
         for (size_t  h = 0; h < img_h; h++) 
@@ -222,7 +219,7 @@ float* blobFromImage(cv::Mat& img){
             for (size_t w = 0; w < img_w; w++) 
             {
                 blob[c * img_w * img_h + h * img_w + w] =
-                    (((float)img.at<cv::Vec3b>(h, w)[c]) / 255.0f - mean[c]) / std[c];
+                    (float)img.at<cv::Vec3b>(h, w)[c];
             }
         }
     }
@@ -234,7 +231,7 @@ static void decode_outputs(float* prob, std::vector<Object>& objects, float scal
         std::vector<Object> proposals;
         std::vector<int> strides = {8, 16, 32};
         std::vector<GridAndStride> grid_strides;
-        generate_grids_and_stride(INPUT_W, strides, grid_strides);
+        generate_grids_and_stride(strides, grid_strides);
         generate_yolox_proposals(grid_strides, prob,  BBOX_CONF_THRESH, proposals);
         std::cout << "num of boxes before nms: " << proposals.size() << std::endl;
 
@@ -523,7 +520,8 @@ int main(int argc, char** argv) {
     std::vector<Object> objects;
     decode_outputs(prob, objects, scale, img_w, img_h);
     draw_objects(img, objects, input_image_path);
-
+    // delete the pointer to the float
+    delete blob;
     // destroy the engine
     context->destroy();
     engine->destroy();
