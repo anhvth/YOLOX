@@ -27,7 +27,7 @@ class DrowsinessInfer:
                 return x.cpu().numpy()
             return x
             
-        ort_inputs = {cnnlstm.get_inputs()[i].name: _px(x) for i, x in enumerate([x, lh0, lc0, rh0, rc0, mh0, mc0])}
+        ort_inputs = {self.cnnlstm.get_inputs()[i].name: _px(x) for i, x in enumerate([x, lh0, lc0, rh0, rc0, mh0, mc0])}
         # torch_inputs = [torch.from_numpy(x).to(device) for x in ort_inputs.values()]
         return ort_inputs #, torch_inputs
 
@@ -43,7 +43,7 @@ class DrowsinessInfer:
 
 
 
-    def infer(self, origin_img, final_boxes, final_cls_inds):
+    def infer(self, origin_img, final_boxes, final_cls_inds, vis=False):
         def crop( img, bbox, size=None):
             import mmcv
             try:
@@ -77,11 +77,13 @@ class DrowsinessInfer:
         x = [T(Image.fromarray(_)) for _ in x]
         x = np.stack(x)[None, None]
 
-        inps = get_inps(x, lh0, lc0, rh0, rc0, mh0, mc0)
-        output, lh0, lc0, rh0, rc0, mh0, mc0 = cnnlstm.run(None, inps)
+        inps = get_inps(x, *self.state)
+        output, lh0, lc0, rh0, rc0, mh0, mc0 = self.cnnlstm.run(None, inps)
+        self.state = lh0, lc0, rh0, rc0, mh0, mc0
         output = torch.from_numpy(output).sigmoid().squeeze().numpy()
-        
-        origin_img = prob_viz(output, origin_img)
+        if vis:
+            origin_img = prob_viz(output, origin_img)
+        return output, origin_img
 
 
 
