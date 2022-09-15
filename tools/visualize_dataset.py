@@ -5,14 +5,13 @@
 import argparse
 import random
 import warnings
-from loguru import logger
 
 import torch
 import torch.backends.cudnn as cudnn
-
-from yolox.core import launch
-from yolox.exp import Exp, get_exp
-from yolox.utils import configure_module, configure_nccl, configure_omp, get_num_devices
+from loguru import logger
+from yolox.core import Trainer, launch
+from yolox.exp import get_exp
+from yolox.utils import configure_nccl, configure_omp, get_num_devices
 
 
 def make_parser():
@@ -32,14 +31,14 @@ def make_parser():
     )
     parser.add_argument("-b", "--batch-size", type=int, default=64, help="batch size")
     parser.add_argument(
-        "-d", "--devices", default=None, type=int, help="device for training"
+        "-d", "--devices", default=1, type=int, help="device for training"
     )
     parser.add_argument(
         "-f",
         "--exp_file",
         default=None,
         type=str,
-        help="plz input your experiment description file",
+        help="plz input your expriment description file",
     )
     parser.add_argument(
         "--resume", default=False, action="store_true", help="resume training"
@@ -73,6 +72,12 @@ def make_parser():
         help="Caching imgs to RAM for fast training.",
     )
     parser.add_argument(
+        "--test",
+        default=False,
+        action="store_true",
+        help="Viz test ",
+    )
+    parser.add_argument(
         "-o",
         "--occupy",
         dest="occupy",
@@ -84,15 +89,6 @@ def make_parser():
         "--debug",
         default=False,
         action="store_true",
-        help="enter debug mode, no logging setup.",
-    )
-    parser.add_argument(
-        "-l",
-        "--logger",
-        type=str,
-        help="Logger to be used for metrics. \
-        Implemented loggers include `tensorboard` and `wandb`.",
-        default="tensorboard"
     )
     parser.add_argument(
         "opts",
@@ -100,11 +96,12 @@ def make_parser():
         default=None,
         nargs=argparse.REMAINDER,
     )
+
     return parser
 
 
 @logger.catch
-def main(exp: Exp, args):
+def main(exp, args):
     if exp.seed is not None:
         random.seed(exp.seed)
         torch.manual_seed(exp.seed)
@@ -120,18 +117,14 @@ def main(exp: Exp, args):
     configure_omp()
     cudnn.benchmark = True
 
-    trainer = exp.get_trainer(args)
-    trainer.train()
+    trainer = Trainer(exp, args)
+    trainer.visualize()
 
 
 if __name__ == "__main__":
-    configure_module()
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
-    if args.debug:
-        exp.data_num_workers = 0
-        args.devices = 1
 
     if not args.experiment_name:
         args.experiment_name = exp.exp_name

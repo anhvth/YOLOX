@@ -18,6 +18,7 @@ class Exp(BaseExp):
 
         # ---------------- model config ---------------- #
         # detect classes number of model
+        self.input_channel = 3
         self.num_classes = 80
         # factor of model depth
         self.depth = 1.00

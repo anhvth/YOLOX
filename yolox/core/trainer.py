@@ -62,14 +62,50 @@ class Trainer:
 
         if self.rank == 0:
             os.makedirs(self.file_name, exist_ok=True)
+        if not args.debug:
+            setup_logger(
+                self.file_name,
+                distributed_rank=self.rank,
+                filename="train_log.txt",
+                mode="a",
+            )
+    def visualize(self):
+        # data related init
+        if self.args.test:
+            dl = self.exp.get_eval_loader(batch_size=1, is_distributed=False,)
+        else:
+            dl = self.exp.get_data_loader(
+                batch_size=self.args.batch_size,
+                is_distributed=False,
+                # no_mosaic=False,
+                cache_img=False,
+            )
+        logger.info("init prefetcher, this might take one minute or less...")
 
-        setup_logger(
-            self.file_name,
-            distributed_rank=self.rank,
-            filename="train_log.txt",
-            mode="a",
-        )
+        ds = dl.dataset
+        i = 0
+        import numpy as np
+        import mmcv
+        img_ids = np.random.choice(len(ds), 100)
+        # for img, target, img_info, img_id in ds:
 
+        for img_id in img_ids:
+            img_id = int(img_id)
+            img, target, img_info, img_id = ds[img_id]
+            # i += 1
+            img = np.transpose(img, [1, 2, 0])
+            img_id = img_id[0]
+            bboxes = target[target.sum(1) != 0][:, 1:]
+            imw, imh = bboxes[:, 2], bboxes[:, 3]
+            cx, cy = bboxes[:, 0], bboxes[:, 1]
+            x1 = cx-imw/2
+            y1 = cy-imh/2
+            x2 = cx+imw/2
+            y2 = cy+imh/2
+            bboxes = np.stack([x1, y1, x2, y2], 1)
+            out_file = f'.cache/vis_sample_{self.exp.exp_name}/{img_id}.jpg'
+            img = mmcv.visualization.imshow_bboxes(img, bboxes, show=False, out_file=out_file)
+            print(out_file)
     def train(self):
         self.before_train()
         try:
@@ -134,7 +170,7 @@ class Trainer:
         torch.cuda.set_device(self.local_rank)
         model = self.exp.get_model()
         logger.info(
-            "Model Summary: {}".format(get_model_info(model, self.exp.test_size))
+            "Model Summary: {}".format(get_model_info(model, self.exp.test_size, self.exp.input_channel))
         )
         model.to(self.device)
 

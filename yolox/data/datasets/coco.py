@@ -60,8 +60,15 @@ class COCODataset(Dataset):
             data_dir = os.path.join(get_yolox_datadir(), "COCO")
         self.data_dir = data_dir
         self.json_file = json_file
+        try:
+            json_path = os.path.join(self.data_dir, "annotations", self.json_file)
+            assert os.path.exists(json_path), json_path
+        except:
+            json_path = os.path.join(self.data_dir, self.json_file)
+            assert os.path.exists(json_path), json_path
 
-        self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
+        self.coco = COCO(json_path)
+
         remove_useless_info(self.coco)
         self.ids = self.coco.getImgIds()
         self.class_ids = sorted(self.coco.getCatIds())
@@ -228,7 +235,7 @@ class COCODataset(Dataset):
             img_id (int): same as the input index. Used for evaluation.
         """
         img, target, img_info, img_id = self.pull_item(index)
-
+        
         if self.preproc is not None:
             img, target = self.preproc(img, target, self.input_dim)
         return img, target, img_info, img_id

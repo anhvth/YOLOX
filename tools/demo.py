@@ -266,7 +266,7 @@ def main(exp, args):
         exp.test_size = (args.tsize, args.tsize)
 
     model = exp.get_model()
-    logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size)))
+    logger.info("Model Summary: {}".format(get_model_info(model, exp.test_size, exp.input_channel)))
 
     if args.device == "gpu":
         model.cuda()
