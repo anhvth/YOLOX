@@ -196,10 +196,9 @@ class COCODataset(Dataset):
         file_name = self.annotations[index][3]
 
         img_file = os.path.join(self.data_dir, self.name, file_name)
-
+        img_file = os.path.abspath(img_file)
         img = cv2.imread(img_file)
         assert img is not None, f"file named {img_file} not found"
-
         return img
 
     def pull_item(self, index):
@@ -239,3 +238,17 @@ class COCODataset(Dataset):
         if self.preproc is not None:
             img, target = self.preproc(img, target, self.input_dim)
         return img, target, img_info, img_id
+
+
+
+class COCOIRDataset(COCODataset):
+    def load_image(self, index):
+        file_name = self.annotations[index][3]
+
+        img_file = os.path.join(self.data_dir, self.name, file_name)
+        img_file = os.path.abspath(img_file)
+        img = cv2.imread(img_file)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        assert img is not None, f"file named {img_file} not found"
+        return img

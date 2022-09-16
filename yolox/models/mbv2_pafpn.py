@@ -121,9 +121,9 @@ class MobileNetV2(nn.Module):
         self.classifier = nn.Linear(output_channel, num_classes)
 
         self._initialize_weights()
-        st = torch.load('pretrained/mbv2.pth')
-        st['features.0.0.weight'] = st['features.0.0.weight'][:,:1]
-        self.load_state_dict(st, strict=False)
+        # st = torch.load('pretrained/mbv2.pth')
+        # st['features.0.0.weight'] = st['features.0.0.weight'][:,:1]
+        # self.load_state_dict(st, strict=False)
 
     def forward(self, x):
         x = self.features(x)

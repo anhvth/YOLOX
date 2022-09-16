@@ -76,17 +76,23 @@ def main():
         ckpt_file = args.ckpt
 
     # load the model state dict
-    ckpt = torch.load(ckpt_file, map_location="cpu")
-
     model.eval()
-    if "model" in ckpt:
-        ckpt = ckpt["model"]
-    model.load_state_dict(ckpt)
+    try:
+        ckpt = torch.load(ckpt_file, map_location="cpu")
+        if "model" in ckpt:
+            ckpt = ckpt["model"]
+        model.load_state_dict(ckpt)
+    except Exception as e:
+        print('Error', e)
+        
+        # import traceback
+        # traceback.print_exc()
+
     model = replace_module(model, nn.SiLU, SiLU)
     model.head.decode_in_inference = args.decode_in_inference
 
     logger.info("loading checkpoint done.")
-    dummy_input = torch.randn(args.batch_size, 3, exp.test_size[0], exp.test_size[1])
+    dummy_input = torch.randn(args.batch_size, exp.input_channel, exp.test_size[0], exp.test_size[1])
 
     torch.onnx._export(
         model,
