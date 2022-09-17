@@ -203,7 +203,6 @@ class COCODataset(Dataset):
 
     def pull_item(self, index):
         id_ = self.ids[index]
-
         res, img_info, resized_info, _ = self.annotations[index]
         if self.imgs is not None:
             pad_img = self.imgs[index]

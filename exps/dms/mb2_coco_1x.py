@@ -14,10 +14,10 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.num_classes = 3
-        self.depth = 1
+        self.num_classes = 80
+        self.depth = 0.75
         self.width = 0.5
-        self.data_num_workers = 4
+        self.data_num_workers = 2
         self.input_size = (416, 416)
         self.multiscale_range = 5
         self.random_size = (10, 20)
@@ -28,19 +28,20 @@ class Exp(MyExp):
         self.enable_mixup = True
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
-        self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
+        # self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
+        self.data_dir = "/data/public/coco"
 
         # name of annotation file for training
         # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
-        self.train_ann = "train_with_coco.json"
+        self.train_ann = "instances_train2017.json"
         # name of annotation file for evaluation
-        self.val_ann = "val_with_coco.json"
+        self.val_ann = "instances_val2017.json"
         # name of annotation file for testing
-        self.test_ann = "val.json"
-        self.input_channel = 1
+        self.test_ann = self.val_ann
+        self.input_channel = 3
         self.act = 'relu'
-        self.basic_lr_per_img = 0.005 / 64.0
-        self.max_epoch = 30
+        # self.basic_lr_per_img = 0.01 / 64.0
+        self.max_epoch = 50
         self.warmup_epochs = 5
 
     def get_model(self, sublinear=False):
@@ -84,7 +85,7 @@ class Exp(MyExp):
             dataset = COCOIRDataset(
                 data_dir=self.data_dir,
                 json_file=self.train_ann,
-                name='images',
+                name='train2017',
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
@@ -142,7 +143,7 @@ class Exp(MyExp):
         valdataset = COCOIRDataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
-            name='images',
+            name='val2017',
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
         )
@@ -198,7 +199,5 @@ if __name__ == '__main__':
     exp = Exp()
     print(exp.get_model())
     data = exp.get_data_loader(batch_size=1, is_distributed=False)
-
-    # import ipdb; ipdb.set_trace()
     x = next(iter(data))[0]
     print(x.shape)

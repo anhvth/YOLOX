@@ -14,59 +14,58 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.num_classes = 3
-        self.depth = 0.33
-        self.width = 0.5
-        self.data_num_workers = 4
-        self.input_size = (416, 416)
-        self.multiscale_range = 5
-        self.random_size = (10, 20)
-        self.mosaic_scale = (0.5, 1.5)
-        self.test_size = (416, 416)
-        self.mosaic_prob = 0.5
-        self.hsv_prob = 0.5
-        self.enable_mixup = True
+        self.num_classes = 4
+        self.depth = 0.67
+        self.width = 0.75
+        self.input_channel = 3
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
-        self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
+        # self.data_num_workers = 4
+        # self.input_size = (416, 416)
+        # self.multiscale_range = 5
+        # self.random_size = (10, 20)
+        # self.mosaic_scale = (0.5, 1.5)
+        # self.test_size = (416, 416)
+        # self.mosaic_prob = 0.5
+        # self.hsv_prob = -1.0
+        # self.enable_mixup = False
+        # self.act = 'relu'
+        # ('/data/full-version-vip-pro/coco_annotations/train.json', '/data/full-version-vip-pro/DMS_DB_090922/', 'face')
 
-        # name of annotation file for training
-        # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
-        self.train_ann = "food_face_train.json"
-        # name of annotation file for evaluation
-        self.val_ann = "food_face_val.json"
-        # name of annotation file for testing
+        self.data_dir = "/data/full-version-vip-pro/"
+        self.train_ann = "train.json"
+        self.val_ann = "val.json"
         self.test_ann = "val.json"
-        self.input_channel = 1
-        self.act = 'relu'
         self.basic_lr_per_img = 0.005 / 64.0
         self.max_epoch = 30
         self.warmup_epochs = 5
 
-    def get_model(self, sublinear=False):
-    
-        def init_yolo(M):
-            for m in M.modules():
-                if isinstance(m, nn.BatchNorm2d):
-                    m.eps = 1e-3
-                    m.momentum = 0.03
-        if "model" not in self.__dict__:
-            from yolox.models import YOLOX, MobilenetV2PAFPN, YOLOXHead
-            in_channels = [32, 96, 320]
-            # MobileNetV2 model use depthwise = True, which is main difference.
-            backbone = MobilenetV2PAFPN(
-                self.depth, self.width, in_channels=in_channels, first_channel=1,
-                act=self.act, depthwise=True, pretrained=None
-            )
-            head = YOLOXHead(
-                self.num_classes, self.width, in_channels=in_channels,
-                act=self.act, depthwise=True
-            )
-            self.model = YOLOX(backbone, head)
+        self.flip_prob = 0
 
-        self.model.apply(init_yolo)
-        self.model.head.initialize_biases(1e-2)
-        return self.model
+    # def get_model(self, sublinear=False):
+    
+    #     def init_yolo(M):
+    #         for m in M.modules():
+    #             if isinstance(m, nn.BatchNorm2d):
+    #                 m.eps = 1e-3
+    #                 m.momentum = 0.03
+    #     if "model" not in self.__dict__:
+    #         from yolox.models import YOLOX, MobilenetV2PAFPN, YOLOXHead
+    #         in_channels = [32, 96, 320]
+    #         # MobileNetV2 model use depthwise = True, which is main difference.
+    #         backbone = MobilenetV2PAFPN(
+    #             self.depth, self.width, in_channels=in_channels, first_channel=1,
+    #             act=self.act, depthwise=True, pretrained=None
+    #         )
+    #         head = YOLOXHead(
+    #             self.num_classes, self.width, in_channels=in_channels,
+    #             act=self.act, depthwise=True
+    #         )
+    #         self.model = YOLOX(backbone, head)
+
+    #     self.model.apply(init_yolo)
+    #     self.model.head.initialize_biases(1e-2)
+    #     return self.model
 
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):
         from yolox.data import (
@@ -84,7 +83,7 @@ class Exp(MyExp):
             dataset = COCOIRDataset(
                 data_dir=self.data_dir,
                 json_file=self.train_ann,
-                name='images',
+                name='DMS_DB_090922 ',
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
@@ -142,7 +141,7 @@ class Exp(MyExp):
         valdataset = COCOIRDataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
-            name='images',
+            name='DMS_DB_090922 ',
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
         )
@@ -198,5 +197,7 @@ if __name__ == '__main__':
     exp = Exp()
     print(exp.get_model())
     data = exp.get_data_loader(batch_size=1, is_distributed=False)
+
+    # import ipdb; ipdb.set_trace()
     x = next(iter(data))[0]
     print(x.shape)
