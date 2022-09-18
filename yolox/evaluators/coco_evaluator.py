@@ -122,7 +122,6 @@ class COCOEvaluator:
             if get_local_rank() == 0:
                 pbar.set_description('Num samples: {}/{}'.format(np_imgs,
                                      len(imgs)*len(self.dataloader)))
-        
         torch_type = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
         statistics = torch_type([inference_time, nms_time, n_samples])
         if distributed:
@@ -134,9 +133,17 @@ class COCOEvaluator:
             if get_local_rank() == 0:
                 import os
                 import mmcv
-                mmcv.mkdir_or_exist(os.path.dirname(out_file))
-                mmcv.dump(data_list, out_file)
-                logger.info(f"Prediction output dumped -> {out_file})")
+                # mmcv.mkdir_or_exist(os.path.dirname(out_file))
+                from avcv.all import CocoDataset
+
+
+
+                coco = self.dataloader.dataset.coco
+
+                pred = CocoDataset(coco, '', data_list).pred.dataset
+                mmcv.dump(pred, out_file)
+
+                logger.info(f"Prediction output dumped -> {out_file}) as COCO format")
         return data_list, statistics
 
     def evaluate(
@@ -195,6 +202,7 @@ class COCOEvaluator:
             cls = output[:, 6]
             scores = output[:, 4] * output[:, 5]
             for ind in range(bboxes.shape[0]):
+                
                 label = self.dataloader.dataset.class_ids[int(cls[ind])]
                 pred_data = {
                     "image_id": int(img_id),

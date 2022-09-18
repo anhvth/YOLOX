@@ -199,6 +199,7 @@ def image_demo(predictor, vis_folder, path, current_time, save_result):
             )
             os.makedirs(save_folder, exist_ok=True)
             save_file_name = os.path.join(save_folder, os.path.basename(image_name))
+            save_file_name = os.path.relpath(save_file_name, '.')
             logger.info("Saving detection result in {}".format(save_file_name))
             cv2.imwrite(save_file_name, result_image)
         ch = cv2.waitKey(0)
@@ -302,8 +303,19 @@ def main(exp, args):
         trt_file = None
         decoder = None
 
+    # import ipdb; ipdb.set_trace()
+    from avcv.all import memoize
+
+    @memoize
+    def get_classes(exp_name):
+        eval_loader = exp.get_eval_loader(1, False)
+        classes = [cat['name'] for cat in eval_loader.dataset.coco.cats.values()]
+        return classes
+
+    classes = get_classes(exp.exp_name)
+
     predictor = Predictor(
-        model, exp, COCO_CLASSES, trt_file, decoder,
+        model, exp, classes, trt_file, decoder,
         args.device, args.fp16, args.legacy,
     )
     current_time = time.localtime()

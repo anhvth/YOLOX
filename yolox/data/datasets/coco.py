@@ -45,6 +45,7 @@ class COCODataset(Dataset):
         img_size=(416, 416),
         preproc=None,
         cache=False,
+        json_test=None, 
     ):
         """
         COCO dataset initialization. Annotation data are read into memory by COCO API.
@@ -68,6 +69,14 @@ class COCODataset(Dataset):
             assert os.path.exists(json_path), json_path
 
         self.coco = COCO(json_path)
+        if json_test is not None:
+            from avcv.all import mmcv, AvCOCO
+            ds = self.coco.dataset
+            ds['categories'] = mmcv.load(json_test)['categories']
+            ds['annotations'] = []
+            logger.info('Update categories->{}, annotations->', ds['categories'], ds['annotations'])
+            self.coco = AvCOCO(ds)
+
 
         remove_useless_info(self.coco)
         self.ids = self.coco.getImgIds()
@@ -81,7 +90,7 @@ class COCODataset(Dataset):
         self.annotations = self._load_coco_annotations()
         if cache:
             self._cache_images()
-
+            
     def __len__(self):
         return len(self.ids)
 
@@ -209,7 +218,6 @@ class COCODataset(Dataset):
             img = pad_img[: resized_info[0], : resized_info[1], :].copy()
         else:
             img = self.load_resized_img(index)
-
         return img, res.copy(), img_info, np.array([id_])
 
     @Dataset.mosaic_getitem
@@ -246,6 +254,7 @@ class COCOIRDataset(COCODataset):
 
         img_file = os.path.join(self.data_dir, self.name, file_name)
         img_file = os.path.abspath(img_file)
+        assert os.path.exists(img_file), img_file
         img = cv2.imread(img_file)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
@@ -268,20 +277,4 @@ class COCOAgnosticDataset(COCOIRDataset):
         self.class_ids = sorted(self.coco.getCatIds())
         self.cats = self.coco.loadCats(self.coco.getCatIds())
         self._classes = tuple([c["name"] for c in self.cats])
-        # self.imgs = None
-        # self.name = name
-        # self.img_size = img_size
-        # self.preproc = preproc
         self.annotations = self._load_coco_annotations()
-        # if cache:
-        #     self._cache_images()
-
-
-    # def _load_coco_annotations(self):
-
-    #     annotations = super()._load_coco_annotations()
-    #     new_annotations = []
-    #     for res, img_info, resized_info, file_name in annotations:
-    #         res[:, -1] = 0.
-    #         new_annotations.append([res, img_info, resized_info, file_name])
-    #     return new_annotations

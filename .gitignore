@@ -219,4 +219,5 @@ events.out.tfevents*
 
 # vim
 *.mp4
+*.json
 .vim

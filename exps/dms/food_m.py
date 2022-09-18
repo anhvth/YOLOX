@@ -14,67 +14,26 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.num_classes = 1
-        self.depth = 0.75
-        self.width = 0.5
-        self.data_num_workers = 1
-        self.input_size = (416, 416)
-        self.multiscale_range = 5
-        self.random_size = (10, 20)
-        self.mosaic_scale = (0.5, 1.5)
-        self.test_size = (416, 416)
-        self.mosaic_prob = 0.5
-        self.hsv_prob = -1.0
-        self.enable_mixup = True
+        self.num_classes = 3
+        self.depth = 0.67
+        self.width = 0.75
+        self.input_channel = 3
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
-        # self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
-        self.data_dir = "/data/public/coco"
+        self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food"
+        self.train_ann = "train.json"
+        self.val_ann = "val.json"
+        self.test_ann = "val.json"
+        # self.img_dir = dict(train='images', val='images')
+        self.train_name = 'images'
+        self.val_name = 'images'
+        self.basic_lr_per_img = 0.005 / 64.0
+        self.max_epoch = 30
 
-        self.img_dir = dict(train='train2017', val='val2017')
-
-        # name of annotation file for training
-        # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
-        self.train_ann = "instances_train2017.json"
-        # name of annotation file for evaluation
-        self.val_ann = "instances_val2017.json"
-        # name of annotation file for testing
-        self.test_ann = self.val_ann
-        self.input_channel = 3
-        self.act = 'relu'
-        # self.basic_lr_per_img = 0.01 / 64.0
-        self.max_epoch = 20
-        self.no_aug_epochs = 5
-        self.warmup_epochs = 5
-
-    def get_model(self, sublinear=False):
-    
-        def init_yolo(M):
-            for m in M.modules():
-                if isinstance(m, nn.BatchNorm2d):
-                    m.eps = 1e-3
-                    m.momentum = 0.03
-        if "model" not in self.__dict__:
-            from yolox.models import YOLOX, MobilenetV2PAFPN, YOLOXHead
-            in_channels = [32, 96, 320]
-            # MobileNetV2 model use depthwise = True, which is main difference.
-            backbone = MobilenetV2PAFPN(
-                self.depth, self.width, in_channels=in_channels, first_channel=1,
-                act=self.act, depthwise=True, pretrained=None
-            )
-            head = YOLOXHead(
-                self.num_classes, self.width, in_channels=in_channels,
-                act=self.act, depthwise=True
-            )
-            self.model = YOLOX(backbone, head)
-
-        self.model.apply(init_yolo)
-        self.model.head.initialize_biases(1e-2)
-        return self.model
 
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):
         from yolox.data import (
-            COCOAgnosticDataset,
+            COCOIRDataset,
             TrainTransform,
             YoloBatchSampler,
             DataLoader,
@@ -85,10 +44,10 @@ class Exp(MyExp):
         from yolox.utils import wait_for_the_master
 
         with wait_for_the_master():
-            dataset = COCOAgnosticDataset(
+            dataset = COCOIRDataset(
                 data_dir=self.data_dir,
                 json_file=self.train_ann,
-                name=self.img_dir['train'],
+                name=self.train_name,
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
@@ -141,14 +100,14 @@ class Exp(MyExp):
         return train_loader
 
     def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False):
-        from yolox.data import COCOAgnosticDataset, ValTransform
-
-        valdataset = COCOAgnosticDataset(
+        from yolox.data import COCOIRDataset, ValTransform
+        valdataset = COCOIRDataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
-            name=self.img_dir['val'],
+            name=self.val_name,
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
+            json_test=self.json_test,
         )
 
         if is_distributed:
@@ -202,5 +161,7 @@ if __name__ == '__main__':
     exp = Exp()
     print(exp.get_model())
     data = exp.get_data_loader(batch_size=1, is_distributed=False)
+
+    # import ipdb; ipdb.set_trace()
     x = next(iter(data))[0]
     print(x.shape)

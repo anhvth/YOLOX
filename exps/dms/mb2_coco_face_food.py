@@ -2,6 +2,9 @@
 # -*- coding:utf-8 -*-
 # Copyright (c) Megvii, Inc. and its affiliates.
 
+
+# Take alook here for data creation nbs/create_merge_dataset.ipynb
+
 import os
 
 import torch
@@ -14,7 +17,7 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.num_classes = 1
+        self.num_classes = 6
         self.depth = 0.75
         self.width = 0.5
         self.data_num_workers = 1
@@ -29,15 +32,14 @@ class Exp(MyExp):
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
         # self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
-        self.data_dir = "/data/public/coco"
-
-        self.img_dir = dict(train='train2017', val='val2017')
+        self.data_dir = '/data/face_food_concat/'
+        self.train_name = self.val_name = 'images'
 
         # name of annotation file for training
         # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
-        self.train_ann = "instances_train2017.json"
+        self.train_ann = "train.json"
         # name of annotation file for evaluation
-        self.val_ann = "instances_val2017.json"
+        self.val_ann = "val.json"
         # name of annotation file for testing
         self.test_ann = self.val_ann
         self.input_channel = 3
@@ -46,6 +48,8 @@ class Exp(MyExp):
         self.max_epoch = 20
         self.no_aug_epochs = 5
         self.warmup_epochs = 5
+        
+        self.eval_interval = 2
 
     def get_model(self, sublinear=False):
     
@@ -74,7 +78,7 @@ class Exp(MyExp):
 
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):
         from yolox.data import (
-            COCOAgnosticDataset,
+            COCOIRDataset,
             TrainTransform,
             YoloBatchSampler,
             DataLoader,
@@ -85,10 +89,10 @@ class Exp(MyExp):
         from yolox.utils import wait_for_the_master
 
         with wait_for_the_master():
-            dataset = COCOAgnosticDataset(
+            dataset = COCOIRDataset(
                 data_dir=self.data_dir,
                 json_file=self.train_ann,
-                name=self.img_dir['train'],
+                name=self.train_name,
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
@@ -141,12 +145,12 @@ class Exp(MyExp):
         return train_loader
 
     def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False):
-        from yolox.data import COCOAgnosticDataset, ValTransform
+        from yolox.data import COCOIRDataset, ValTransform
 
-        valdataset = COCOAgnosticDataset(
+        valdataset = COCOIRDataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
-            name=self.img_dir['val'],
+            name=self.val_name,
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
         )

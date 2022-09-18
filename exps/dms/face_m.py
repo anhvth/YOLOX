@@ -33,14 +33,21 @@ class Exp(MyExp):
         # ('/data/full-version-vip-pro/coco_annotations/train.json', '/data/full-version-vip-pro/DMS_DB_090922/', 'face')
 
         self.data_dir = "/data/full-version-vip-pro/"
+        # self.img_dir = dict(train='DMS_DB_090922', val='DMS_DB_090922')
+        self.train_name = self.val_name = 'DMS_DB_090922'
         self.train_ann = "train.json"
-        self.val_ann = "val.json"
+        self.val_ann = "train.json"
         self.test_ann = "val.json"
         self.basic_lr_per_img = 0.005 / 64.0
         self.max_epoch = 30
-        self.warmup_epochs = 5
 
         self.flip_prob = 0
+
+
+    # def get_model(self, sublinear=False):
+    #     super().get_model()
+    #     model = self.model
+    #     import ipdb; ipdb.set_trace()
 
     # def get_model(self, sublinear=False):
     
@@ -83,7 +90,7 @@ class Exp(MyExp):
             dataset = COCOIRDataset(
                 data_dir=self.data_dir,
                 json_file=self.train_ann,
-                name='DMS_DB_090922 ',
+                name=self.train_name,
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
@@ -141,9 +148,10 @@ class Exp(MyExp):
         valdataset = COCOIRDataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
-            name='DMS_DB_090922 ',
+            name=self.val_name,
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
+            json_test=self.json_test,
         )
 
         if is_distributed:

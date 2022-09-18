@@ -108,7 +108,11 @@ class Exp(BaseExp):
         # nms threshold
         self.nmsthre = 0.65
 
+        self.finetune = None
+        self.json_test = None
+        
     def get_model(self):
+        assert self.finetune in [None, 'head', 'linearprob']
         from yolox.models import YOLOX, YOLOPAFPN, YOLOXHead
 
         def init_yolo(M):
@@ -126,6 +130,15 @@ class Exp(BaseExp):
         self.model.apply(init_yolo)
         self.model.head.initialize_biases(1e-2)
         self.model.train()
+
+        if self.finetune == 'head':
+            self.model.requires_grad_(False)
+            self.model.head.requires_grad_(True)
+        elif self.finetune == 'linearprob':
+            self.model.requires_grad_(False)
+            self.model.head.cls_preds.requires_grad_(True)
+            self.model.head.reg_preds.requires_grad_(True)
+            self.model.head.obj_preds.requires_grad_(True)
         return self.model
 
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):
@@ -272,13 +285,13 @@ class Exp(BaseExp):
 
     def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False):
         from yolox.data import COCODataset, ValTransform
-
         valdataset = COCODataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
             name="val2017" if not testdev else "test2017",
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
+            json_test=self.json_test
         )
 
         if is_distributed:

@@ -28,7 +28,15 @@ def get_model_info(model: nn.Module, tsize: Sequence[int], input_channel) -> str
     params /= 1e6
     flops /= 1e9
     flops *= tsize[0] * tsize[1] / stride / stride * 2  # Gflops
-    info = "Params: {:.2f}M, Gflops: {:.2f}".format(params, flops)
+    
+    total, trainable = 0,0
+    for p in model.parameters():
+        if p.requires_grad:
+            trainable += p.numel()/1e6
+        total += p.numel()/1e6
+    
+    info = "Params: {:.2f}M, Gflops: {:.2f}\n, Total: {:0.2f} m params, Trainable: {:0.2f} m params ({:0.2f} %)".format(
+        params, flops, total, trainable, 100*trainable/total)
     return info
 
 

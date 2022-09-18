@@ -65,6 +65,10 @@ def make_parser():
         action="store_true",
         help="Adopting mix precision training.",
     )
+
+    parser.add_argument(
+        "--finetune", default=None,
+    )
     parser.add_argument(
         "--cache",
         dest="cache",
@@ -135,6 +139,11 @@ if __name__ == "__main__":
         exp.train_ann = exp.val_ann
         exp.img_dir['train'] = exp.img_dir['val']
         exp.batch_size = 2
+        exp.print_interval = 1
+
+    if args.finetune is not None:
+        assert args.ckpt is not None
+        exp.finetune = args.finetune
 
     if not args.experiment_name:
         args.experiment_name = exp.exp_name

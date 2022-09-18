@@ -161,7 +161,7 @@ def main(exp, args, num_gpu):
 
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
-    setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+    # setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
@@ -213,7 +213,7 @@ def main(exp, args, num_gpu):
     else:
         trt_file = None
         decoder = None
-
+    
     *_, summary = evaluator.evaluate(
         model, is_distributed, args.fp16, trt_file, decoder, exp.test_size, out_file=args.out_file,
     )
@@ -224,12 +224,14 @@ if __name__ == "__main__":
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
-
+    if args.ckpt is None:
+        args.ckpt = os.path.join(f'YOLOX_outputs/{exp.exp_name}/best_ckpt.pth')
     if args.json_path is not None:
         json_path = args.json_path
         exp.data_dir = args.json_path.split('annotations')[0]
         exp.val_ann = os.path.basename(args.json_path)
-        # exp.val_name = 'images'
+        if args.json_test is not None:
+            exp.json_test = args.json_test
 
     if args.input_video is not None:
         assert args.json_test is not None
@@ -242,7 +244,6 @@ if __name__ == "__main__":
         exp.val_name = 'images'
         exp.annotation_dir = 'annotations'
         args.dump = True
-
     if args.eval_trainset:
         exp.val_ann = exp.train_ann
         exp.val_name = exp.train_img_dir
