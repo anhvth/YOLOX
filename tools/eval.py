@@ -90,6 +90,11 @@ def make_parser():
         help="To be compatible with older versions",
     )
     parser.add_argument(
+        "--debug",
+        action='store_true',
+        default=False,
+    )
+    parser.add_argument(
         "--test",
         dest="test",
         default=False,
@@ -134,8 +139,8 @@ def main(exp, args, num_gpu):
 
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
-
-    setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+    if not args.debug:
+        setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:

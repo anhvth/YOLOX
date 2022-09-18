@@ -132,6 +132,9 @@ if __name__ == "__main__":
     if args.debug:
         exp.data_num_workers = 0
         args.devices = 1
+        exp.train_ann = exp.val_ann
+        exp.img_dir['train'] = exp.img_dir['val']
+        exp.batch_size = 2
 
     if not args.experiment_name:
         args.experiment_name = exp.exp_name

@@ -251,3 +251,37 @@ class COCOIRDataset(COCODataset):
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         assert img is not None, f"file named {img_file} not found"
         return img
+
+
+class COCOAgnosticDataset(COCOIRDataset):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        dataset = self.coco.dataset
+        for ann in dataset['annotations']:
+            ann['category_id'] = dataset['categories'][0]['id']
+        dataset['categories'] = dataset['categories'][:1]
+        from avcv.all import AvCOCO
+        self.coco = AvCOCO(dataset)
+
+        # remove_useless_info(self.coco)
+        self.ids = self.coco.getImgIds()
+        self.class_ids = sorted(self.coco.getCatIds())
+        self.cats = self.coco.loadCats(self.coco.getCatIds())
+        self._classes = tuple([c["name"] for c in self.cats])
+        # self.imgs = None
+        # self.name = name
+        # self.img_size = img_size
+        # self.preproc = preproc
+        self.annotations = self._load_coco_annotations()
+        # if cache:
+        #     self._cache_images()
+
+
+    # def _load_coco_annotations(self):
+
+    #     annotations = super()._load_coco_annotations()
+    #     new_annotations = []
+    #     for res, img_info, resized_info, file_name in annotations:
+    #         res[:, -1] = 0.
+    #         new_annotations.append([res, img_info, resized_info, file_name])
+    #     return new_annotations

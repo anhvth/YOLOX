@@ -218,4 +218,5 @@ events.out.tfevents*
 .vscode
 
 # vim
+*.mp4
 .vim
