@@ -34,7 +34,7 @@ def make_parser():
         default=False,
         help="whether to save the inference result of image/video",
     )
-    parser.add_argument('--categories', default='1,77')
+    parser.add_argument('--categories', default=None)
     parser.add_argument("--track_thresh",
                         type=float,
                         default=0.1,
@@ -99,7 +99,6 @@ class MyCocoDataset(CocoDataset):
     def __init__(self, gt, im, pred, **kwargs):
         super().__init__(gt, im, pred, **kwargs)
         img_dir = osp.join(osp.dirname(im), get_name(im), 'images')
-        # import ipdb; ipdb.set_trace()
         if osp.exists(img_dir):
             self.img_dir = img_dir
         elif osp.isfile(im):
@@ -136,30 +135,43 @@ def get_image_list(path):
 
 def get_coco_pred(path):
     ext = osp.basename(path).split('.')[-1]
-    ann_path = path.replace(f".{ext}", "/annotations/images.json")
-    pred_path = path.replace(f".{ext}", "/annotations/pred.json")
-    assert osp.exists(ann_path), ann_path
-    assert osp.exists(pred_path), pred_path
-    cc = MyCocoDataset(ann_path, path, pred=pred_path)
+    if osp.isdir(path):
+        jsons = glob(osp.join(path, 'annotations/*.json'))
+        pred = [j for j in jsons if get_name(j).startswith('pred_')]
+        ann_path = pred[0]
+        logger.info('Use {}', ann_path)
+        cc = CocoDataset(ann_path)
+    else:
+        ann_path = path.replace(f".{ext}", "/annotations/images.json")
+        pred_path = path.replace(f".{ext}", "/annotations/pred.json")
+        assert osp.exists(ann_path), ann_path
+        assert osp.exists(pred_path), pred_path
+        cc = MyCocoDataset(ann_path, path, pred=pred_path)
     fn2id = {
         int(get_name(img['file_name'])): img['id']
         for img in cc.gt.imgs.values()
     }
     ks = list(cc.gt.imgs.keys())
-    return cc
+    return cc, ann_path
 
 
-def imageflow_demo(args, categories=[1], csv_out_path=None):
-    csv_out_path = csv_out_path if csv_out_path is not None else get_csv_out_path(args.path)
+def imageflow_demo(args, categories=None):
     save_folder = osp.join(args.output_dir, get_name(args.path))
+
     save_path = osp.join(save_folder,
                          "{}_track_vis.mp4".format(get_name(args.path)))
 
     os.makedirs(args.output_dir, exist_ok=True)
-    cc = get_coco_pred(args.path)
-    pred = cc.pred
-    os.makedirs(save_folder, exist_ok=True)
+    cc, ann_path = get_coco_pred(args.path)
+    
+    csv_out_path = osp.join(args.path, 
+                    'annotations/{}_track.csv'.format(get_name(ann_path)))
 
+    pred = cc.gt
+    os.makedirs(save_folder, exist_ok=True)
+    if categories is None:
+        categories = [ann['id'] for ann in pred.cats.values()]
+        logger.info('Use all category for tracking, {}', categories)
     tracker = {cat: BYTETracker(args, frame_rate=30) for cat in categories}
     results = [f"img_id,tid,cat_id,x,y,w,h,score\n"]
     vis_imgs = []
@@ -171,7 +183,6 @@ def imageflow_demo(args, categories=[1], csv_out_path=None):
 
     img_info = pred.imgs[img_ids[0]]
     imsize = (img_info['height'], img_info['width'])
-
     for img_id in pbar:
         frame_id = img_id
         ret_val = True
@@ -215,12 +226,12 @@ def imageflow_demo(args, categories=[1], csv_out_path=None):
             vis_imgs.append(online_im)
         frame_id += 1
 
-    
+    # csv_out_path = csv_out_path if csv_out_path is not None else get_csv_out_path(args.path)
+
     with open(csv_out_path, 'w') as f:
         f.writelines(results)
-
+    df = pd.read_csv(csv_out_path)
     logger.info(f"save results to {csv_out_path}")
-
     if args.visualize:
         images_to_video(vis_imgs,
                         save_path,
@@ -229,7 +240,7 @@ def imageflow_demo(args, categories=[1], csv_out_path=None):
         print(
             f'rs dms:"{osp.abspath(save_path)}" ./ && open "{osp.basename(save_path)}"'
         )
-    return csv_out_path
+    return cc, csv_out_path
 
 def track_coco(cc, args, categories=[1, 77], verbose=False):
     save_folder = osp.join(args.output_dir, args.name)
@@ -290,7 +301,10 @@ def run_track(cc, name, verbose=0, args=None):
     #--------------------------
     default_track_args.name = name
     return track_coco(cc, default_track_args, [1], verbose=verbose)
+
 def visualize_track_df(cc, df, name):
+    if isinstance(df, str):
+        df = pd.read_csv(df)
     img_ids = sorted(cc.img_ids, key=lambda img_id: cc.gt.imgs[img_id]['file_name'])
     vis_imgs = []
     logger.info('Visualize tracking')
@@ -299,8 +313,9 @@ def visualize_track_df(cc, df, name):
         frame_id, img_id = inp
         img = cc.gt.imgs[img_id]
         tracks = df[df.img_id==img_id]
-        is_track = tracks['t'].apply(lambda t:t.is_activated)
+        # import ipdb; ipdb.set_trace()
         online_tlwhs = tracks[['x', 'y', 'w', 'h']].values
+        is_track = [True]*len(online_tlwhs)#tracks['t'].apply(lambda t:t.is_activated)
         
         online_tlwhs = [item for item, tracked in zip(online_tlwhs, is_track) if tracked]
         
@@ -322,11 +337,13 @@ if __name__ == '__main__':
     parser = make_parser()
     args = parser.parse_known_args()[0]
     args.mot20 = False
-    categories = [int(_) for _ in args.categories.split(',') if _.isdigit()]
+
+    categories = [int(_) for _ in args.categories.split(',') if _.isdigit()] if args.categories is not None else None
     logger.info(f'Tracking ids: {categories}')
     
-    csv_out_path = get_csv_out_path(args.path) if args.csv_out_path is None else args.csv_out_path
+    
 
-    imageflow_demo(args, categories, csv_out_path=csv_out_path)
+    cc, csv_out_path = imageflow_demo(args, categories)
+    visualize_track_df(cc, csv_out_path, get_name(csv_out_path))
 
 

@@ -134,6 +134,9 @@ def make_parser():
     parser.add_argument(
         '--json_test', default=None, help='Use with input video'
     )
+    parser.add_argument(
+        '--out_dir', default=None, help='Out coco format dir'
+    )
     parser.add_argument('--dump', action='store_true', default=False)
 
     return parser
@@ -161,7 +164,7 @@ def main(exp, args, num_gpu):
 
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
-    # setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+    setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
@@ -234,16 +237,20 @@ if __name__ == "__main__":
             exp.json_test = args.json_test
 
     if args.input_video is not None:
-        assert args.json_test is not None
+        # assert args.json_test is not None
+        if args.json_test is None:
+            args.json_test = osp.join(exp.data_dir, 'annotations', exp.val_ann)
         from avcv.coco import video_to_coco
-        
-        output_dir = osp.join(osp.dirname(args.input_video), osp.basename(args.input_video).split('.')[0])
+        out_coco_format_dir = osp.dirname(args.input_video) if args.out_dir is None else args.out_dir
+        output_dir = osp.join(out_coco_format_dir, osp.basename(args.input_video).split('.')[0])
+        args.out_file = osp.join(output_dir, 'annotations', f'pred_{exp.exp_name}.json')
         json_path = video_to_coco(args.input_video, args.json_test, output_dir, rescale=(512, 512))[0]
         exp.data_dir = json_path.split('annotations')[0]
         exp.val_ann = os.path.basename(json_path)
         exp.val_name = 'images'
         exp.annotation_dir = 'annotations'
         args.dump = True
+
     if args.eval_trainset:
         exp.val_ann = exp.train_ann
         exp.val_name = exp.train_img_dir
