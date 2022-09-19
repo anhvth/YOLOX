@@ -42,10 +42,10 @@ class Exp(MyExp):
         self.val_ann = "val.json"
         # name of annotation file for testing
         self.test_ann = self.val_ann
-        self.input_channel = 3
+        self.input_channel = 1
         self.act = 'relu'
         # self.basic_lr_per_img = 0.01 / 64.0
-        self.max_epoch = 20
+        self.max_epoch = 100
         self.no_aug_epochs = 5
         self.warmup_epochs = 5
         
