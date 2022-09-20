@@ -129,7 +129,7 @@ class Predictor(object):
             self.model(x)
             self.model = model_trt
 
-    def inference(self, img):
+    def img_preproc(self, img):
         img_info = {"id": 0}
         if isinstance(img, str):
             img_info["file_name"] = os.path.basename(img)
@@ -153,10 +153,14 @@ class Predictor(object):
             if self.fp16:
                 img = img.half()  # to FP16
 
+        return img, img_info
+
+    def inference(self, img):
+        img, img_info = self.img_preproc(img)
         with torch.no_grad():
             t0 = time.time()
             outputs = self.model(img)
-            if self.decoder is not None:
+            import ipdb; ipdb.set_trace()
                 outputs = self.decoder(outputs, dtype=outputs.type())
             outputs = postprocess(
                 outputs, self.num_classes, self.confthre,

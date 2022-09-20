@@ -23,7 +23,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     dc = CocoDataset(args.gt, args.imgs, args.pred)
-    dataset_name = args.gt.split('/')[-3]
+    try:
+        dataset_name = args.gt.split('/')[-3]
+    except:
+        dataset_name = 'dataset_name'
 
     for img_id in np.random.choice(dc.img_ids, args.num_samples, replace=False):
         img = dc.visualize(img_id, mode='gt' if args.pred is None else 'pred')

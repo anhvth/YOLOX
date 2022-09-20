@@ -221,3 +221,4 @@ events.out.tfevents*
 *.mp4
 *.json
 .vim
+lightning_logs/

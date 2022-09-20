@@ -51,6 +51,7 @@ class COCOEvaluator:
                        test_size=None,
                        out_file=None,
                        postprocess=postprocess,
+                       dump_raw_output=True
                        ):
         """
         COCO average precision (AP) Evaluation. Iterate inference on the test dataset
@@ -75,6 +76,7 @@ class COCOEvaluator:
             model = model.half()
         ids = []
         data_list = []
+        raw_data_list = []
         progress_bar = tqdm if is_main_process() else iter
 
         inference_time = 0
@@ -103,7 +105,7 @@ class COCOEvaluator:
                 is_time_record = cur_iter < len(self.dataloader) - 1
                 if is_time_record:
                     start = time.time()
-                outputs = model(imgs)
+                raw_outputs = outputs = model(imgs)
                 if decoder is not None:
                     outputs = decoder(outputs, dtype=outputs.type())
 
@@ -119,6 +121,9 @@ class COCOEvaluator:
                     nms_time += nms_end - infer_end
 
             data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
+            raw_data_list.extend(list(zip(ids.numpy().reshape(-1).tolist(), raw_outputs.cpu().numpy())))
+
+
             if get_local_rank() == 0:
                 pbar.set_description('Num samples: {}/{}'.format(np_imgs,
                                      len(imgs)*len(self.dataloader)))
@@ -131,18 +136,19 @@ class COCOEvaluator:
 
         if out_file is not None:
             if get_local_rank() == 0:
-                import os
+                import os, os.path as osp
                 import mmcv
                 # mmcv.mkdir_or_exist(os.path.dirname(out_file))
-                from avcv.all import CocoDataset
-
-
+                from avcv.all import CocoDataset, get_name
+                import pandas as pd
+                import numpy as np
 
                 coco = self.dataloader.dataset.coco
-
+                # raw_data_df = pd.DataFrame(raw_data_list, columns=['image_id', 'outputs'])
                 pred = CocoDataset(coco, '', data_list).pred.dataset
                 mmcv.dump(pred, out_file)
-
+                raw_out_file = osp.join(osp.dirname(out_file), get_name(out_file)+'_raw_outputs.pkl')
+                mmcv.dump(raw_data_list, raw_out_file)
                 logger.info(f"Prediction output dumped -> {out_file}) as COCO format")
         return data_list, statistics
 

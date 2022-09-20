@@ -20,7 +20,7 @@ class Exp(MyExp):
         self.num_classes = 6
         self.depth = 0.75
         self.width = 0.5
-        self.data_num_workers = 1
+        self.data_num_workers = 2
         self.input_size = (416, 416)
         self.multiscale_range = 5
         self.random_size = (10, 20)

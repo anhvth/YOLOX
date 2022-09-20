@@ -1,6 +1,6 @@
 
 from glob import glob
-import argparse, os
+import argparse, os, os.path as osp
 parser = argparse.ArgumentParser()
 
 parser.add_argument('shfile')
@@ -12,12 +12,18 @@ args = parser.parse_args()
 # inputs="/data/DMS_Behavior_Detection/RawVideos/Action_Eating/*/*.mp4"
 cmds = []
 for i, path in enumerate(glob(args.globpattern)):
-    cmd = f"{args.shfile} {path}"
-    cmds.append(cmd)
+    opath = path.replace('.json', '_2.json')
+    if not osp.exists(opath):
+        cmd = f"{args.shfile} {path} {opath}"
+        cmds.append(cmd)
+# import ipdb; ipdb.set_trace()
 wi = 0
-for i in range(0, len(cmds), int(args.totalgpu)):
+
+num_cmd_per_window = len(cmds) // 16
+print(f'{num_cmd_per_window=}')
+for i in range(0, len(cmds), num_cmd_per_window):
     
-    _cmds = cmds[i:i+int(args.totalgpu)]
+    _cmds = cmds[i:i+num_cmd_per_window]
 
     _cmds = "\n".join(_cmds)
     
@@ -33,4 +39,4 @@ for i in range(0, len(cmds), int(args.totalgpu)):
         tmuxcmd = f"tmux new-window -n w{wi} -t {target_tmux}: 'CUDA_VISIBLE_DEVICES={gpu} sh {tmpsh} || echo Done && sleep 10'"
     wi += 1
     print(tmuxcmd)
-    os.system(tmuxcmd)
+    # os.system(tmuxcmd)
