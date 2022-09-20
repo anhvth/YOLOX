@@ -6,10 +6,6 @@ cur_dir = osp.dirname(__file__)+'/../'
 class SimpleCLS2D(nn.Module):
     def __init__(self):
         super().__init__()
-        # self.conv1 = get_fuse_conv(8)
-        # self.conv2 = get_fuse_conv(4)
-        # self.conv3 = get_fuse_conv(2)
-        
         self.layers = nn.Sequential(
             nn.Linear(1014, 256),
             nn.BatchNorm1d(256),
@@ -40,7 +36,7 @@ def create_classifier(ckpt_path=f'{cur_dir}/lightning_logs/simple_nn/39/ckpts/ep
         k = k[6:]
         st[k] = v
     model = SimpleCLS2D()
-    res = model.load_state_dict(st)
+    res = model.load_state_dict(st, strict=True)
     print(res)
     return model
 
@@ -81,18 +77,23 @@ class ModelWrapper(nn.Module):
         img = img.permute([0,3,1,2])
         x = self.mb2_yolox(img)
         x = self.classifier(x)
-        return x
+        return x#.softmax(1)
 
 
 model_wraper = ModelWrapper()
-print(model_wraper)
 
+# print(model_wraper)
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('out_path')
+args = parser.parse_args()
 torch.onnx.export(model_wraper,
                     torch.randn(1, 416, 416, 1),
-                    'yolox_mb2_classifer_4.onnx',
+                    args.out_path,
                     export_params=True,
                     opset_version=10,
                     # do_constant_folding=True,
                     input_names = ['input'],
                     output_names = ['output'])
 
+print('->', osp.abspath(args.out_path))

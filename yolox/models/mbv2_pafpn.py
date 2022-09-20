@@ -262,7 +262,7 @@ class MobilenetV2PAFPN(nn.Module):
         """
 
         # if input.size(1) == 3:
-        input = input[:,:1]
+        # input = input[:,:1]p
         
         out_features = self.backbone(input)
         out_features = list(out_features.values())
