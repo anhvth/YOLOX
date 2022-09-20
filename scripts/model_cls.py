@@ -2,12 +2,39 @@ import os, os.path as osp
 from yolox.exp.build import get_exp_by_file
 import torch.nn as nn, torch
 
+def get_M(input_size = [224, 416], num_cls=6):
+    """
+        return list of mapping [old_start, old_end, new_start, new_end ]
+    """
+    M = []
+    target_f_size = []
+    
+    cur_i = 0
+    o_cur_i = 0
+
+    for i in [8,16,32]:
+        h, w = input_size
+        _h, _w = h//i, w//i
+        _oh = _ow = 416//i
+
+        a, b = cur_i,cur_i +_h*_w
+        oa, ob = o_cur_i,o_cur_i +_oh*_oh
+        cur_i = b
+        o_cur_i = ob
+        M.append([oa, ob, _h*_w, _h, _w])
+        
+    return M, _h*_w*num_cls
+
+M, IN_CHANNEL_CLS = get_M()
+print(f'{IN_CHANNEL_CLS=}')
+NUM_CLASSES = 6
+
 cur_dir = osp.dirname(__file__)+'/../'
 class SimpleCLS2D(nn.Module):
     def __init__(self):
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Linear(1014, 256),
+            nn.Linear(IN_CHANNEL_CLS, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Linear(256, 128),
@@ -19,24 +46,28 @@ class SimpleCLS2D(nn.Module):
 
     def forward(self, x):
         x = x[...,4:5]*x[...,5:]
-        x1 = x[:, 0:2704].reshape([-1, 52, 52, 6]).permute([0,3,1,2])
-        x2 = x[:, 2704:3380].reshape([-1, 26, 26, 6]).permute([0,3,1,2])
-        x3 = x[:, 3380:3549].reshape([-1, 13, 13, 6]).permute([0,3,1,2])
-
-        x1 = nn.functional.max_pool2d(x1, 4)
-        x2 = nn.functional.max_pool2d(x2, 2)
-        fuse = x1+x2+x3
-        fuse = fuse.flatten(1)
+        xs = []
+        cur_i = 0
+        for i, _ in enumerate(M):
+            h,w = _[-2:]
+            _x = x[:, cur_i:cur_i+h*w].reshape([-1, h, w, 6]).permute([0,3,1,2])
+            
+            pool_size = 2**(2-i)
+            _x = nn.functional.max_pool2d(_x, pool_size)
+            cur_i += h*w
+            xs.append(_x)
+            # print(_x.shape)
+        fuse = sum(xs).flatten(1)
         return self.layers(fuse)
 
-def create_classifier(ckpt_path=f'{cur_dir}/lightning_logs/simple_nn/39/ckpts/epoch=7-val_acc=0.73.ckpt'):
+def create_classifier(ckpt_path=f'{cur_dir}/lightning_logs/simple_nn/00/ckpts/epoch=6-val_acc=0.74.ckpt'):
     ckpt = torch.load(ckpt_path)
     st = dict()
     for k, v in ckpt['state_dict'].items():
         k = k[6:]
         st[k] = v
     model = SimpleCLS2D()
-    res = model.load_state_dict(st, strict=True)
+    res = model.load_state_dict(st, strict=False)
     print(res)
     return model
 
@@ -88,7 +119,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('out_path')
 args = parser.parse_args()
 torch.onnx.export(model_wraper,
-                    torch.randn(1, 416, 416, 1),
+                    torch.randn(1, 224, 416, 1),
                     args.out_path,
                     export_params=True,
                     opset_version=10,
