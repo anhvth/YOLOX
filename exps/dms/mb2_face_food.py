@@ -32,20 +32,20 @@ class Exp(MyExp):
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
         # self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
-        self.data_dir = '/data/face_food_concat/'
+        self.data_dir = '/data/DMS_Behavior_Detection/'
         self.train_name = self.val_name = 'images'
 
         # name of annotation file for training
         # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
-        self.train_ann = "train.json"
+        self.train_ann = "train_7class.json"
         # name of annotation file for evaluation
-        self.val_ann = "val.json"
+        self.val_ann = "val_7class.json"
         # name of annotation file for testing
         self.test_ann = self.val_ann
         self.input_channel = 1
         self.act = 'relu'
         # self.basic_lr_per_img = 0.01 / 64.0
-        self.max_epoch = 100
+        self.max_epoch = 30
         self.no_aug_epochs = 5
         self.warmup_epochs = 5
         

@@ -137,7 +137,7 @@ if __name__ == "__main__":
         exp.data_num_workers = 0
         args.devices = 1
         exp.train_ann = exp.val_ann
-        exp.img_dir['train'] = exp.img_dir['val']
+        exp.train_name = exp.val_name
         exp.batch_size = 2
         exp.print_interval = 1
 

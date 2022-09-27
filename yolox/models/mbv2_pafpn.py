@@ -261,8 +261,8 @@ class MobilenetV2PAFPN(nn.Module):
             Tuple[Tensor]: FPN feature.
         """
 
-        # if input.size(1) == 3:
-        # input = input[:,:1]p
+        if not torch.onnx.is_in_onnx_export() and input.size(1) == 3:
+            input = input[:,:1]
         
         out_features = self.backbone(input)
         out_features = list(out_features.values())

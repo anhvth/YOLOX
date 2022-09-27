@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 # Copyright (c) Megvii Inc. All rights reserved.
 
-import torch.nn as nn
+import torch.nn as nn, torch
 
 from .yolo_head import YOLOXHead
 from .yolo_pafpn import YOLOPAFPN
