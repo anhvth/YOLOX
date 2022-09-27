@@ -2,7 +2,9 @@ import os, os.path as osp
 from yolox.exp.build import get_exp_by_file
 import torch.nn as nn, torch
 from fastcore.all import *
+from loguru import logger
 
+CLASSES = ['face', 'eye', 'mouth', 'phone', 'cigarette', 'food/drink']
 def get_M(input_size = [224, 416], num_cls=6):
     """
         return list of mapping [old_start, old_end, new_start, new_end ]
@@ -45,7 +47,6 @@ class SimpleCLS2D(nn.Module):
         )
 
     def forward(self, x):
-        # import ipdb; ipdb.set_trace()
         if self.training:
             return self.layers(x)[:,:,0,0]
         else:
@@ -59,33 +60,17 @@ def create_yolox_mb2(exp_path=f'{cur_dir}/exps/dms/mb2_face_food.py', ckpt_file 
     exp = get_exp_by_file(exp_path)
     model = exp.get_model()
     model.eval().cpu()
-    from fvcore.nn import FlopCountAnalysis
-    from collections import defaultdict 
-    flops = FlopCountAnalysis(model, (torch.randn(1, 3, 256,320).to('cpu'),))
     
     ckpt = torch.load(ckpt_file, map_location="cpu")
-    if "model" in ckpt:
-        ckpt = ckpt["model"]
+    ckpt = ckpt["model"]
     res = model.load_state_dict(ckpt, strict=1)
-    print(res)
-
-    from yolox.utils import get_model_info, replace_module
-    from yolox.models.network_blocks import SiLU
+    logger.info(res)
     
-    model = replace_module(model, nn.SiLU, SiLU)
-    model.head.decode_in_inference = False
-    
-    model.cpu().eval().requires_grad_(False)
-    return model
+    return model.cpu().eval().requires_grad_(False), ckpt
 
-mb2_yolox = create_yolox_mb2()
-"""_summary_
-    Patching yolox for classifier inference
-Returns:
-    _type_: _description_
-"""
+mb2_yolox, ckpt = create_yolox_mb2()
 @patch
-def forward(self:type(mb2_yolox.head), xin, labels=None, imgs=None):
+def forward_classification(self:type(mb2_yolox.head), xin, labels=None, imgs=None):
     outputs = []
     origin_preds = []
     x_shifts = []
@@ -118,28 +103,25 @@ def forward(self:type(mb2_yolox.head), xin, labels=None, imgs=None):
         pool_size = pool_sizes[i]
         output = outputs[i]
         output = output[:,4:5]*output[:,5:]
-        # import ipdb; ipdb.set_trace()
         new_f = nn.functional.max_pool2d(output, pool_size)
         new_outputs.append(new_f)
     return sum(new_outputs)
 
-
-
-classifier = SimpleCLS2D()
-
 class ModelWrapper(nn.Module):
     def __init__(self):
         super().__init__()
+        self.classifier = SimpleCLS2D()
 
-        self.mb2_yolox = mb2_yolox
-        self.classifier = classifier
     def forward(self, img):
-        x = self.mb2_yolox(img)
+        with torch.no_grad():
+            mb2_yolox.to(img.device)
+            x = mb2_yolox.backbone(img)
+            x = mb2_yolox.head.forward_classification(x)
         x = self.classifier(x)
-        return x#.sigmoid()
+        return x
 
 
-model_wraper = ModelWrapper()
+
 
 def load_ckpt(model_wraper, ckpt_path):
     st = torch.load(ckpt_path)['state_dict']
@@ -153,6 +135,7 @@ def load_ckpt(model_wraper, ckpt_path):
 
 if __name__ == '__main__':
     # print(model_wraper)
+    model_wraper = ModelWrapper()
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('ckpt')
