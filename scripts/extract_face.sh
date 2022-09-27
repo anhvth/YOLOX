@@ -1,5 +1,4 @@
-
-JSON_PATH=/data/DMS_Behavior_Detection/merge-phone-cigaret-food/annotations/$1.json
+JSON_PATH=/data/DMS_Behavior_Detection/annotations/food_face_$1_27_09_2022.json
 OUT_FILE='.cache/out_jsons/pred_face_on_'$1'.json'
 
 IMG_DIR=images

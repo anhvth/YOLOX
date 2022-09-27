@@ -1,5 +1,5 @@
 
-JSON_PATH=/data/full-version-vip-pro/annotations/$1.json
+JSON_PATH=/data/DMS_Behavior_Detection/annotations/food_face_$1_27_09_2022.json
 OUT_FILE='.cache/out_jsons/pred_food_on_'$1'.json'
 
 IMG_DIR="DMS_DB_090922"

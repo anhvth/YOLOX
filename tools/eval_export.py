@@ -164,7 +164,7 @@ def main(exp, args, num_gpu):
 
     if rank == 0:
         os.makedirs(file_name, exist_ok=True)
-    setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
+    # setup_logger(file_name, distributed_rank=rank, filename="val_log.txt", mode="a")
     logger.info("Args: {}".format(args))
 
     if args.conf is not None:
