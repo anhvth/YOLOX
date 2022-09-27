@@ -160,8 +160,7 @@ class Predictor(object):
         with torch.no_grad():
             t0 = time.time()
             outputs = self.model(img)
-            import ipdb; ipdb.set_trace()
-                outputs = self.decoder(outputs, dtype=outputs.type())
+            # outputs = self.decoder(outputs, dtype=outputs.type())
             outputs = postprocess(
                 outputs, self.num_classes, self.confthre,
                 self.nmsthre, class_agnostic=True
@@ -245,7 +244,7 @@ def imageflow_demo(predictor, vis_folder, current_time, args):
         else:
             break
 
-
+    logger.info('-> {}', osp.abspath(save_path))
 def main(exp, args):
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
