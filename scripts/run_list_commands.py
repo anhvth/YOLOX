@@ -15,12 +15,13 @@ for cmd in open(args.listcmd):
     cmds.append(cmd[:-1])
 
 wi = 0
-num_jobs_per_window = len(cmds)//int(args.totalgpu)
-for i in range(0, len(cmds), num_jobs_per_window):
+ngpu = min(int(args.totalgpu), len(cmds))
+num_jobs_per_window = len(cmds)//ngpu
+for i in range(0, len(cmds), max(num_jobs_per_window, 1)):
     
     _cmds = cmds[i:i+num_jobs_per_window]
     _cmds = "\n".join(_cmds)
-    
+    # import ipdb; ipdb.set_trace()
     
     tmpsh = f'/tmp/script-{wi}.sh'
     with open(tmpsh, 'w') as f:
