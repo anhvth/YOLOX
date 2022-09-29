@@ -17,10 +17,10 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.num_classes = 3
+        self.num_classes = 6
         self.depth = 0.75
         self.width = 0.5
-        self.data_num_workers = 1
+        self.data_num_workers = 2
         self.input_size = (416, 416)
         self.multiscale_range = 5
         self.random_size = (10, 20)
@@ -30,19 +30,22 @@ class Exp(MyExp):
         self.hsv_prob = -1.0
         self.enable_mixup = True
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
-        self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food"
-        self.train_ann = "train.json"
-        self.val_ann = "val.json"
-        self.test_ann = "val.json"
-        # self.img_dir = dict(train='images', val='images')
-        self.train_name = 'images'
-        self.val_name = 'images'
+
+        # self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food/"
+        self.data_dir = '/data/DMS_Behavior_Detection/'
+        self.train_name = self.val_name = 'images'
+
+        # name of annotation file for training
+        # self.train_ann = "phone_cigarette_train_081522_finetuning.json"
+        self.train_ann = "train_3class_phone_face_food.json"
+        # name of annotation file for evaluation
+        self.val_ann = "val_3class_phone_face_food.json"
         # name of annotation file for testing
         self.test_ann = self.val_ann
         self.input_channel = 1
         self.act = 'relu'
         # self.basic_lr_per_img = 0.01 / 64.0
-        self.max_epoch = 20
+        self.max_epoch = 30
         self.no_aug_epochs = 5
         self.warmup_epochs = 5
         
@@ -56,10 +59,10 @@ class Exp(MyExp):
                     m.eps = 1e-3
                     m.momentum = 0.03
         if "model" not in self.__dict__:
-            from yolox.models import YOLOX, MobilenetV2PAFPN, YOLOXHead
+            from yolox.models import YOLOX, phonenetV2PAFPN, YOLOXHead
             in_channels = [32, 96, 320]
-            # MobileNetV2 model use depthwise = True, which is main difference.
-            backbone = MobilenetV2PAFPN(
+            # phoneNetV2 model use depthwise = True, which is main difference.
+            backbone = phonenetV2PAFPN(
                 self.depth, self.width, in_channels=in_channels, first_channel=1,
                 act=self.act, depthwise=True, pretrained=None
             )
