@@ -69,7 +69,7 @@ class Trainer:
                 filename="train_log.txt",
                 mode="a",
             )
-    def visualize(self):
+    def visualize(self, no_aug=False):
         # data related init
         if self.args.test:
             dl = self.exp.get_eval_loader(batch_size=1, is_distributed=False,)
@@ -78,6 +78,7 @@ class Trainer:
                 batch_size=self.args.batch_size,
                 is_distributed=False,
                 # no_mosaic=False,
+                no_aug=no_aug,
                 cache_img=False,
             )
         logger.info("init prefetcher, this might take one minute or less...")

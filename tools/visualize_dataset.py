@@ -91,6 +91,12 @@ def make_parser():
         action="store_true",
     )
     parser.add_argument(
+        "--no_aug",
+        default=False,
+        action="store_true",
+    )
+    
+    parser.add_argument(
         "opts",
         help="Modify config options using the command-line",
         default=None,
@@ -118,14 +124,13 @@ def main(exp, args):
     cudnn.benchmark = True
 
     trainer = Trainer(exp, args)
-    trainer.visualize()
+    trainer.visualize(args.no_aug)
 
 
 if __name__ == "__main__":
     args = make_parser().parse_args()
     exp = get_exp(args.exp_file, args.name)
     exp.merge(args.opts)
-
     if not args.experiment_name:
         args.experiment_name = exp.exp_name
 
