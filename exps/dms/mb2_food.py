@@ -37,7 +37,7 @@ class Exp(MyExp):
 
         # name of annotation file for training
         # self.train_ann = "phone_cigarette_train_081522_finetuning.json"
-        self.train_ann = "train_3class_phone_face_food.json"
+        self.train_ann = "train_3class_phone_food.json"
         # name of annotation file for evaluation
         self.val_ann = "val_3class_phone_face_food.json"
         # name of annotation file for testing
