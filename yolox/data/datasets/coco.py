@@ -124,7 +124,7 @@ class COCODataset(Dataset):
             from tqdm import tqdm
             from multiprocessing.pool import ThreadPool
 
-            NUM_THREADs = min(8, os.cpu_count())
+            NUM_THREADs = min(20, os.cpu_count())
             loaded_images = ThreadPool(NUM_THREADs).imap(
                 lambda x: self.load_resized_img(x),
                 range(len(self.annotations)),
