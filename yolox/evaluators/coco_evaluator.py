@@ -147,9 +147,9 @@ class COCOEvaluator:
                 # raw_data_df = pd.DataFrame(raw_data_list, columns=['image_id', 'outputs'])
                 pred = CocoDataset(coco, '', data_list).pred.dataset
                 mmcv.dump(pred, out_file)
-                raw_out_file = osp.join(osp.dirname(out_file), get_name(out_file)+'_raw_outputs.pkl')
-                mmcv.dump(raw_data_list, raw_out_file)
-                logger.info(f"Prediction output dumped -> {out_file}) as COCO format")
+                # logger.info(f"Prediction output dumped -> {out_file}) as COCO format")
+                # raw_out_file = osp.join(osp.dirname(out_file), get_name(out_file)+'_raw_outputs.pkl')
+                # mmcv.dump(raw_data_list, raw_out_file)
         return data_list, statistics
 
     def evaluate(

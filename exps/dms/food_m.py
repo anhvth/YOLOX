@@ -19,16 +19,23 @@ class Exp(MyExp):
         self.width = 0.75
         self.input_channel = 3
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
+        self.data_dir = '/data/DMS_Behavior_Detection/'
+        self.train_name = self.val_name = 'images'
 
-        self.data_dir = "/data/DMS_Behavior_Detection/merge-phone-cigaret-food"
-        self.train_ann = "train.json"
-        self.val_ann = "val.json"
-        self.test_ann = "val.json"
+        # name of annotation file for training
+        # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
+        self.train_ann = "train_3class_phone_cigarette_food.json"
+        # name of annotation file for evaluation
+        self.val_ann = "val_3class_phone_cigarette_food.json"
         # self.img_dir = dict(train='images', val='images')
         self.train_name = 'images'
         self.val_name = 'images'
         self.basic_lr_per_img = 0.005 / 64.0
-        self.max_epoch = 30
+
+        self.max_epoch = 15
+        self.warmup_epochs = 5
+        self.no_aug_epochs = 15
+        self.eval_interval = 2
 
 
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):

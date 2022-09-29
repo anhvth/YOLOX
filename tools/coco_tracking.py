@@ -37,7 +37,7 @@ def make_parser():
     parser.add_argument('--categories', default=None)
     parser.add_argument("--track_thresh",
                         type=float,
-                        default=0.1,
+                        default=0.6,
                         help="tracking confidence threshold")
     parser.add_argument("--track_buffer",
                         type=int,
@@ -45,7 +45,7 @@ def make_parser():
                         help="the frames for keep lost tracks")
     parser.add_argument("--match_thresh",
                         type=float,
-                        default=1.1,
+                        default=0.9,
                         help="matching threshold for tracking")
     parser.add_argument(
         "--aspect_ratio_thresh",
@@ -142,11 +142,12 @@ def get_coco_pred(path):
         logger.info('Use {}', ann_path)
         cc = CocoDataset(ann_path)
     else:
+        cc = CocoDataset(path)
         ann_path = path.replace(f".{ext}", "/annotations/images.json")
-        pred_path = path.replace(f".{ext}", "/annotations/pred.json")
-        assert osp.exists(ann_path), ann_path
-        assert osp.exists(pred_path), pred_path
-        cc = MyCocoDataset(ann_path, path, pred=pred_path)
+        # pred_path = path.replace(f".{ext}", "/annotations/pred.json")
+        # assert osp.exists(ann_path), ann_path
+        # assert osp.exists(pred_path), pred_path
+        # cc = MyCocoDataset(ann_path, path, pred=pred_path)
     fn2id = {
         int(get_name(img['file_name'])): img['id']
         for img in cc.gt.imgs.values()
@@ -164,8 +165,7 @@ def imageflow_demo(args, categories=None):
     os.makedirs(args.output_dir, exist_ok=True)
     cc, ann_path = get_coco_pred(args.path)
     
-    csv_out_path = osp.join(args.path, 
-                    'annotations/{}_track.csv'.format(get_name(ann_path)))
+    csv_out_path = osp.join(args.path.replace('.json', '_track.csv'))
 
     pred = cc.gt
     os.makedirs(save_folder, exist_ok=True)
@@ -313,9 +313,8 @@ def visualize_track_df(cc, df, name):
         frame_id, img_id = inp
         img = cc.gt.imgs[img_id]
         tracks = df[df.img_id==img_id]
-        # import ipdb; ipdb.set_trace()
         online_tlwhs = tracks[['x', 'y', 'w', 'h']].values
-        is_track = [True]*len(online_tlwhs)#tracks['t'].apply(lambda t:t.is_activated)
+        is_track = [True]*len(online_tlwhs) #tracks['t'].apply(lambda t:t.is_activated)
         
         online_tlwhs = [item for item, tracked in zip(online_tlwhs, is_track) if tracked]
         
@@ -328,7 +327,7 @@ def visualize_track_df(cc, df, name):
                                   fps=-1)
         return online_im
     
-    vis_imgs = multi_thread(f_iter, enumerate(img_ids))
+    vis_imgs = multi_thread(f_iter, enumerate(img_ids[0::3]))
     save_path = 'results_vis/{}.mp4'.format(name)
     images_to_video(vis_imgs, save_path, output_size=(480, 320), verbose=False)
     print(f'rs dms:"{osp.abspath(save_path)}" ./ && open "{osp.basename(save_path)}"')
