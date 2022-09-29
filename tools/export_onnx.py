@@ -19,6 +19,7 @@ def make_parser():
     parser.add_argument(
         "--output-name", type=str, default="yolox.onnx", help="output name of models"
     )
+    parser.add_argument('--input_shapes', default=None, type=str)
     parser.add_argument(
         "--input", default="images", type=str, help="input node name of onnx model"
     )
@@ -26,7 +27,7 @@ def make_parser():
         "--output", default="output", type=str, help="output node name of onnx model"
     )
     parser.add_argument(
-        "-o", "--opset", default=11, type=int, help="onnx opset version"
+        "-o", "--opset", default=10, type=int, help="onnx opset version"
     )
     parser.add_argument("--batch-size", type=int, default=1, help="batch size")
     parser.add_argument(
@@ -92,7 +93,12 @@ def main():
     model.head.decode_in_inference = args.decode_in_inference
 
     logger.info("loading checkpoint done.")
-    dummy_input = torch.randn(args.batch_size, exp.input_channel, exp.test_size[0], exp.test_size[1])
+    if args.input_shapes is not None:
+        input_shapes = [int(_) for _ in args.input_shapes.split(',')]
+    else:
+        input_shapes = exp.test_size    
+    logger.info(f'{input_shapes=}')
+    dummy_input = torch.randn(args.batch_size, exp.input_channel, *input_shapes)
 
     torch.onnx._export(
         model,
