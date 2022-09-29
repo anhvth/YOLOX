@@ -36,10 +36,10 @@ class Exp(MyExp):
         self.train_name = self.val_name = 'images'
 
         # name of annotation file for training
-        # self.train_ann = "phone_cigarette_train_081522_finetuning.json"
-        self.train_ann = "train_3class_phone_food.json"
+        # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
+        self.train_ann = "train_3class_phone_cigarette_food.json"
         # name of annotation file for evaluation
-        self.val_ann = "val_3class_phone_face_food.json"
+        self.val_ann = "val_3class_phone_cigarette_food.json"
         # name of annotation file for testing
         self.test_ann = self.val_ann
         self.input_channel = 1
@@ -59,10 +59,10 @@ class Exp(MyExp):
                     m.eps = 1e-3
                     m.momentum = 0.03
         if "model" not in self.__dict__:
-            from yolox.models import YOLOX, phonenetV2PAFPN, YOLOXHead
+            from yolox.models import YOLOX, MobilenetV2PAFPN, YOLOXHead
             in_channels = [32, 96, 320]
-            # phoneNetV2 model use depthwise = True, which is main difference.
-            backbone = phonenetV2PAFPN(
+            # MobileNetV2 model use depthwise = True, which is main difference.
+            backbone = MobilenetV2PAFPN(
                 self.depth, self.width, in_channels=in_channels, first_channel=1,
                 act=self.act, depthwise=True, pretrained=None
             )
