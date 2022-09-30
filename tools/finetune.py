@@ -61,6 +61,7 @@ if __name__ == "__main__":
         exp.batch_size = 4
         args.devices = 1
         exp.eval_interval = 10000
+        
     if args.finetune is not None:
         assert args.ckpt is not None
         exp.finetune = args.finetune

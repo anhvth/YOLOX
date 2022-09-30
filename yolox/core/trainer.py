@@ -64,7 +64,7 @@ class Trainer:
 
         if self.rank == 0:
             os.makedirs(self.file_name, exist_ok=True)
-        if not args.debug:
+        if not args.debug and not args.vis_batches:
             setup_logger(
                 self.file_name,
                 distributed_rank=self.rank,
@@ -164,8 +164,8 @@ class Trainer:
                 image = bbox_visualize(image, np.array(bboxes), np.array(scores), np.array(cls_ids), class_names=class_names)
                 
                 img_list.append(image)
-            
-            out_path =  f'.cache/vis_one_batch_per_epoch/{self.exp.exp_name}/epoch_{self.epoch:02d}.jpg'
+            ep = self.epoch+1
+            out_path =  f'.cache/vis_one_batch_per_epoch/{self.exp.exp_name}/epoch_{ep:02d}.jpg'
             from torchvision.utils import make_grid
             # import ipdb; ipdb.set_trace()
             grid = make_grid([torch.tensor(_).permute([2,0,1]) for _ in img_list])
@@ -475,8 +475,11 @@ class Finetuner(Trainer):
         super().before_epoch()
         #--
         # Update self.prefetcher
-        if self.epoch == self.exp.max_epoch - 5:
+        
+        if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs or self.no_aug:
             logger.info(f'Epoch {self.epoch }---> Use finetune dataset only')
+            self.exp.enable_mixup = False
+            self.no_aug = True
             self.train_loader = self.exp.get_finetune_data_loader(
                 batch_size=self.args.batch_size,
                 is_distributed=self.is_distributed,
@@ -484,3 +487,5 @@ class Finetuner(Trainer):
                 cache_img=self.args.cache,
             )
             self.prefetcher = DataPrefetcher(self.train_loader)
+
+        print(f'{self.no_aug=}')
