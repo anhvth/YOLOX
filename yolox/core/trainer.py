@@ -32,9 +32,6 @@ from yolox.utils import (
     synchronize
 )
 
-from avcv.all import *
-
-
 class Trainer:
     def __init__(self, exp: Exp, args):
         # init function only defines some basic attr, other attrs like model, optimizer are built in
