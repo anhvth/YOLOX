@@ -126,7 +126,7 @@ class Trainer:
         for self.epoch in range(self.start_epoch, self.max_epoch):
             self.before_epoch()
             if self.args.vis_batches:
-                self.vis_one_batch_per_epoch()
+                self.visualize_one_batch()
             else:
                 self.train_in_iter()
                 self.after_epoch()
@@ -137,39 +137,36 @@ class Trainer:
             self.train_one_iter()
             self.after_iter()
 
-    def vis_one_batch_per_epoch(self):
-        for self.iter in range(self.max_iter):
-            self.before_iter()
-            # vis_one_iter()
-            inps, targets = self.prefetcher.next()
-            from avcv.all import tensor2imgs, bbox_visualize
-            images = inps.permute([0,2,3,1]).byte().cpu().numpy()
-            targets = targets.cpu().numpy()
-            class_idx2name = self.train_loader.dataset._dataset.class_idx2name
-            class_names = list(class_idx2name.values())
-            img_list = []
-            for img_id, (image, target) in enumerate(zip(images, targets)):
-                bboxes = []
-                scores = []
-                cls_ids = []
-                target = target[target.sum(1)>0]
-                for cls_idx, cx,cy,w,h in target:
-                    bboxes.append([cx-w/2,cy-h/2,cx+w/2,cy+h/2])
-                    scores += [1]
-                    cls_ids.append(int(cls_idx))
+    def visualize_one_batch(self):
+        # for self.iter in range(self.max_iter):
+        inps, targets = self.prefetcher.next()
+        
+        from avcv.all import tensor2imgs, bbox_visualize, mmcv
+        import numpy as np
+        images = inps.permute([0,2,3,1]).byte().cpu().numpy()
+        targets = targets.cpu().numpy()
+        class_idx2name = self.train_loader.dataset._dataset.class_idx2name
+        class_names = list(class_idx2name.values())
+        img_list = []
+        for img_id, (image, target) in enumerate(zip(images, targets)):
+            bboxes = []
+            scores = []
+            cls_ids = []
+            target = target[target.sum(1)>0]
+            for cls_idx, cx,cy,w,h in target:
+                bboxes.append([cx-w/2,cy-h/2,cx+w/2,cy+h/2])
+                scores += [1]
+                cls_ids.append(int(cls_idx))
 
-                image = bbox_visualize(image, np.array(bboxes), np.array(scores), np.array(cls_ids), class_names=class_names)
-                
-                img_list.append(image)
-            ep = self.epoch+1
-            out_path =  f'.cache/vis_one_batch_per_epoch/{self.exp.exp_name}/epoch_{ep:02d}.jpg'
-            from torchvision.utils import make_grid
-            # import ipdb; ipdb.set_trace()
-            grid = make_grid([torch.tensor(_).permute([2,0,1]) for _ in img_list])
-            # grid = make_grid([torch.tensor(_) for _ in img_list])
-            mmcv.imwrite(grid.permute([1,2,0]).numpy(), out_path)
-            logger.info('->{}', out_path)
-            break
+            image = bbox_visualize(image, np.array(bboxes), np.array(scores), np.array(cls_ids), class_names=class_names)
+            
+            img_list.append(image)
+        ep = self.epoch+1
+        out_path =  f'.cache/vis_one_batch_per_epoch/{self.exp.exp_name}/epoch_{ep:02d}.jpg'
+        from torchvision.utils import make_grid
+        grid = make_grid([torch.tensor(_).permute([2,0,1]) for _ in img_list])
+        mmcv.imwrite(grid.permute([1,2,0]).numpy(), out_path)
+        logger.info('->{}, Num of samples: {}', out_path, self.max_iter)
 
 
 
@@ -473,16 +470,15 @@ class Finetuner(Trainer):
         #--
         # Update self.prefetcher
         
-        if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs or self.no_aug:
-            logger.info(f'Epoch {self.epoch }---> Use finetune dataset only')
+        if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs:
+            logger.info(f'Epoch {self.epoch }---> Use finetune dataset only | No mosaic, no mixup')
             self.exp.enable_mixup = False
-            self.no_aug = True
             self.train_loader = self.exp.get_finetune_data_loader(
                 batch_size=self.args.batch_size,
                 is_distributed=self.is_distributed,
-                no_aug=self.no_aug,
+                no_aug=True,
                 cache_img=self.args.cache,
             )
             self.prefetcher = DataPrefetcher(self.train_loader)
-
-        print(f'{self.no_aug=}')
+            self.max_iter = len(self.train_loader)
+            print(f'{self.no_aug=}')

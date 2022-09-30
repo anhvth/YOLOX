@@ -12,5 +12,5 @@ class Exp(FoodMb2Exp):
         # Schedual
         self.max_epoch = 10
         self.warmup_epochs = 2
-        self.no_aug_epochs = 3
         self.eval_interval = 1
+        self.no_aug_epochs = 3
