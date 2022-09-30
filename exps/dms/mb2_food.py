@@ -37,7 +37,7 @@ class Exp(MyExp):
 
         # name of annotation file for training
         # self.train_ann = "mobile_cigarette_train_081522_finetuning.json"
-        self.train_ann = "train_3class_phone_cigarette_food.json"
+        self.train_ann = "train_3class_phone_cigarette_food_with_coco.json"
         # name of annotation file for evaluation
         self.val_ann = "val_3class_phone_cigarette_food.json"
         # name of annotation file for testing
@@ -120,7 +120,6 @@ class Exp(MyExp):
         )
 
         self.dataset = dataset
-
         if is_distributed:
             batch_size = batch_size // dist.get_world_size()
 
@@ -201,7 +200,22 @@ class Exp(MyExp):
 
         return self.optimizer
 
-
+    def get_finetune_data_loader(self, *args, **kwargs):
+        from loguru import logger
+        from avcv.all import mmcv, identify, osp
+        json_path = self.dataset._dataset.json_path
+        data = mmcv.load(json_path)
+        new_imgs = []
+        for img in data['images']:
+            if not '/coco/' in img['file_name']:
+                new_imgs.append(img)
+        data['images'] = new_imgs
+        tmp_path = osp.join('/tmp/{}.json'.format(identify(new_imgs)))
+        if not osp.exists(tmp_path):
+            mmcv.dump(data, tmp_path)
+        self.train_ann = tmp_path
+        logger.info('\t\t Num of images: {}'.format(len(data['images'])))
+        return self.get_data_loader(*args, **kwargs)
 if __name__ == '__main__':
     exp = Exp()
     print(exp.get_model())

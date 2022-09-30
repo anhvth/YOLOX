@@ -10,7 +10,7 @@ import os
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-
+from loguru import logger
 from yolox.exp import Exp as MyExp
 
 
@@ -144,6 +144,8 @@ class Exp(MyExp):
 
         return train_loader
 
+
+
     def get_eval_loader(self, batch_size, is_distributed, testdev=False, legacy=False):
         from yolox.data import COCOIRDataset, ValTransform
 
@@ -172,6 +174,7 @@ class Exp(MyExp):
         val_loader = torch.utils.data.DataLoader(valdataset, **dataloader_kwargs)
 
         return val_loader
+        
 
     def get_optimizer(self, batch_size):
         if "optimizer" not in self.__dict__:

@@ -32,6 +32,8 @@ from yolox.utils import (
     synchronize
 )
 
+from avcv.all import *
+
 
 class Trainer:
     def __init__(self, exp: Exp, args):
@@ -74,16 +76,21 @@ class Trainer:
         if self.args.test:
             dl = self.exp.get_eval_loader(batch_size=1, is_distributed=False,)
         else:
-            dl = self.exp.get_data_loader(
-                batch_size=self.args.batch_size,
-                is_distributed=False,
-                # no_mosaic=False,
-                no_aug=no_aug,
-                cache_img=False,
-            )
+            self.epoch = 0
+            try:self.before_train()
+            except:pass
+            self.before_epoch()
+        #     dl = self.exp.get_data_loader(
+        #         batch_size=self.args.batch_size,
+        #         is_distributed=False,
+        #         # no_mosaic=False,
+        #         no_aug=no_aug,
+        #         cache_img=False,
+        #     )
+
         logger.info("init prefetcher, this might take one minute or less...")
 
-        ds = dl.dataset
+        ds = self.train_loader.dataset
         i = 0
         import numpy as np
         import mmcv
@@ -93,6 +100,7 @@ class Trainer:
         for img_id in img_ids:
             img_id = int(img_id)
             img, target, img_info, img_id = ds[img_id]
+
             # i += 1
             img = np.transpose(img, [1, 2, 0])
             img_id = img_id[0]
@@ -107,6 +115,7 @@ class Trainer:
             out_file = f'.cache/vis_sample_{self.exp.exp_name}/{img_id}.jpg'
             img = mmcv.visualization.imshow_bboxes(img, bboxes, show=False, out_file=out_file)
             print(out_file)
+
     def train(self):
         self.before_train()
         try:
@@ -119,14 +128,53 @@ class Trainer:
     def train_in_epoch(self):
         for self.epoch in range(self.start_epoch, self.max_epoch):
             self.before_epoch()
-            self.train_in_iter()
-            self.after_epoch()
+            if self.args.vis_batches:
+                self.vis_one_batch_per_epoch()
+            else:
+                self.train_in_iter()
+                self.after_epoch()
 
     def train_in_iter(self):
         for self.iter in range(self.max_iter):
             self.before_iter()
             self.train_one_iter()
             self.after_iter()
+
+    def vis_one_batch_per_epoch(self):
+        for self.iter in range(self.max_iter):
+            self.before_iter()
+            # vis_one_iter()
+            inps, targets = self.prefetcher.next()
+            from avcv.all import tensor2imgs, bbox_visualize
+            images = inps.permute([0,2,3,1]).byte().cpu().numpy()
+            targets = targets.cpu().numpy()
+            class_idx2name = self.train_loader.dataset._dataset.class_idx2name
+            class_names = list(class_idx2name.values())
+            img_list = []
+            for img_id, (image, target) in enumerate(zip(images, targets)):
+                bboxes = []
+                scores = []
+                cls_ids = []
+                target = target[target.sum(1)>0]
+                for cls_idx, cx,cy,w,h in target:
+                    bboxes.append([cx-w/2,cy-h/2,cx+w/2,cy+h/2])
+                    scores += [1]
+                    cls_ids.append(int(cls_idx))
+
+                image = bbox_visualize(image, np.array(bboxes), np.array(scores), np.array(cls_ids), class_names=class_names)
+                
+                img_list.append(image)
+            
+            out_path =  f'.cache/vis_one_batch_per_epoch/{self.exp.exp_name}/epoch_{self.epoch:02d}.jpg'
+            from torchvision.utils import make_grid
+            # import ipdb; ipdb.set_trace()
+            grid = make_grid([torch.tensor(_).permute([2,0,1]) for _ in img_list])
+            # grid = make_grid([torch.tensor(_) for _ in img_list])
+            mmcv.imwrite(grid.permute([1,2,0]).numpy(), out_path)
+            logger.info('->{}', out_path)
+            break
+
+
 
     def train_one_iter(self):
         iter_start_time = time.time()
@@ -253,7 +301,6 @@ class Trainer:
 
     def after_epoch(self):
         self.save_ckpt(ckpt_name="latest")
-
         if (self.epoch + 1) % self.exp.eval_interval == 0:
             all_reduce_norm(self.model)
             self.evaluate_and_save_model()
@@ -417,3 +464,23 @@ class Trainer:
                         "curr_ap": ap
                     }
                 )
+
+
+class Finetuner(Trainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert hasattr(self.exp, 'get_finetune_data_loader')
+
+    def before_epoch(self):
+        super().before_epoch()
+        #--
+        # Update self.prefetcher
+        if self.epoch == self.exp.max_epoch - 5:
+            logger.info(f'Epoch {self.epoch }---> Use finetune dataset only')
+            self.train_loader = self.exp.get_finetune_data_loader(
+                batch_size=self.args.batch_size,
+                is_distributed=self.is_distributed,
+                no_aug=self.no_aug,
+                cache_img=self.args.cache,
+            )
+            self.prefetcher = DataPrefetcher(self.train_loader)

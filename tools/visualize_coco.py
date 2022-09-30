@@ -23,7 +23,14 @@ if __name__ == '__main__':
     parser.add_argument('--score_thr', default=0.3, type=float)
     parser.add_argument('--out_dir', default='.cache/visualize_samples/')
     parser.add_argument('--output_size', default='500,300')
-
+    parser.add_argument(
+        "-l",
+        "--logger",
+        type=str,
+        help="Logger to be used for metrics. \
+        Implemented loggers include `tensorboard` and `wandb`.",
+        default="tensorboard"
+    )
     args = parser.parse_args()
     dc = CocoDataset(args.gt, args.imgs, args.pred)
     try:

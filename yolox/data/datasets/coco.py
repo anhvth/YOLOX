@@ -67,7 +67,7 @@ class COCODataset(Dataset):
         except:
             json_path = os.path.join(self.data_dir, self.json_file)
             assert os.path.exists(json_path), json_path
-
+        self.json_path = json_path
         self.coco = COCO(json_path)
         if json_test is not None:
             from avcv.all import mmcv, AvCOCO
@@ -83,6 +83,7 @@ class COCODataset(Dataset):
         self.class_ids = sorted(self.coco.getCatIds())
         self.cats = self.coco.loadCats(self.coco.getCatIds())
         self._classes = tuple([c["name"] for c in self.cats])
+        self.class_idx2name = {i:n for i, n in zip(self.class_ids, self._classes)}
         self.imgs = None
         self.name = name
         self.img_size = img_size
@@ -272,7 +273,6 @@ class COCOAgnosticDataset(COCOIRDataset):
         from avcv.all import AvCOCO
         self.coco = AvCOCO(dataset)
 
-        # remove_useless_info(self.coco)
         self.ids = self.coco.getImgIds()
         self.class_ids = sorted(self.coco.getCatIds())
         self.cats = self.coco.loadCats(self.coco.getCatIds())

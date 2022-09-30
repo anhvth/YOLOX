@@ -91,6 +91,13 @@ def make_parser():
         help="enter debug mode, no logging setup.",
     )
     parser.add_argument(
+        "--vis_batches",
+        default=False,
+        action="store_true",
+        help="Visualize one batch per epoch",
+    )
+    
+    parser.add_argument(
         "-l",
         "--logger",
         type=str,
@@ -138,8 +145,9 @@ if __name__ == "__main__":
         args.devices = 1
         exp.train_ann = exp.val_ann
         exp.train_name = exp.val_name
-        exp.batch_size = 2
         exp.print_interval = 1
+        args.batch_size = 2
+
 
     if args.finetune is not None:
         assert args.ckpt is not None
