@@ -17,7 +17,7 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.num_classes = 6
+        self.num_classes = 3
         self.depth = 0.75
         self.width = 0.5
         self.data_num_workers = 2
@@ -26,8 +26,8 @@ class Exp(MyExp):
         self.random_size = (10, 20)
         self.mosaic_scale = (0.5, 1.5)
         self.test_size = (416, 416)
-        self.mosaic_prob = 0.5
-        self.hsv_prob = -1.0
+        self.mosaic_prob = 1
+        self.hsv_prob = 1
         self.enable_mixup = True
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 

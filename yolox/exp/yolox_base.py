@@ -110,6 +110,8 @@ class Exp(BaseExp):
 
         self.finetune = None
         self.json_test = None
+        self.val_name = "val2017"# if not testdev else "test2017",
+        self.train_name = "train2017"
         
     def get_model(self):
         assert self.finetune in [None, 'head', 'linearprob']
@@ -163,6 +165,7 @@ class Exp(BaseExp):
                     flip_prob=self.flip_prob,
                     hsv_prob=self.hsv_prob),
                 cache=cache_img,
+                name=self.train_name,
             )
 
         dataset = MosaicDetection(
@@ -288,7 +291,7 @@ class Exp(BaseExp):
         valdataset = COCODataset(
             data_dir=self.data_dir,
             json_file=self.val_ann if not testdev else self.test_ann,
-            name="val2017" if not testdev else "test2017",
+            name=self.val_name,
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
             json_test=self.json_test

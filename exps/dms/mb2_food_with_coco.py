@@ -8,9 +8,11 @@ class Exp(FoodMb2Exp):
 
         # Generated from nbs/concat_food_dring_smoking.ipynb
         self.train_ann = "train_3class_phone_cigarette_food_with_coco.json" 
-
+        #data
+        self.data_num_workers = 4
         # Schedual
-        self.max_epoch = 10
-        self.warmup_epochs = 2
-        self.eval_interval = 1
-        self.no_aug_epochs = 3
+        self.max_epoch = 30
+        self.warmup_epochs = 3
+        self.eval_interval = 3
+        self.no_aug_epochs = 5
+        

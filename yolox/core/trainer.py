@@ -138,8 +138,8 @@ class Trainer:
             self.after_iter()
 
     def visualize_one_batch(self):
-        # for self.iter in range(self.max_iter):
-        inps, targets = self.prefetcher.next()
+        for self.iter in range(self.num_workers+1):
+            inps, targets = self.prefetcher.next()
         
         from avcv.all import tensor2imgs, bbox_visualize, mmcv
         import numpy as np
@@ -472,7 +472,6 @@ class Finetuner(Trainer):
         
         if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs:
             logger.info(f'Epoch {self.epoch }---> Use finetune dataset only | No mosaic, no mixup')
-            self.exp.enable_mixup = False
             self.train_loader = self.exp.get_finetune_data_loader(
                 batch_size=self.args.batch_size,
                 is_distributed=self.is_distributed,
@@ -481,4 +480,3 @@ class Finetuner(Trainer):
             )
             self.prefetcher = DataPrefetcher(self.train_loader)
             self.max_iter = len(self.train_loader)
-            print(f'{self.no_aug=}')
