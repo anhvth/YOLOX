@@ -46,7 +46,7 @@ if __name__ == '__main__':
         imgs = multi_thread(visualize_one_frame, dc.img_ids)
         mmcv.mkdir_or_exist(args.out_dir)
         output_size = [int(_) for _ in args.output_size.split(',')]
-        images_to_video(imgs, osp.join(args.out_dir, 'vis_video.mp4'), output_size=output_size)
+        images_to_video(imgs[0::3], osp.join(args.out_dir, 'vis_video.mp4'), output_size=output_size)
     else:
         for img_id in np.random.choice(dc.img_ids, args.num_samples, replace=False):
             visualize_one_frame(img_id)

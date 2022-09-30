@@ -327,9 +327,9 @@ def visualize_track_df(cc, df, name):
                                   fps=-1)
         return online_im
     
-    vis_imgs = multi_thread(f_iter, enumerate(img_ids[0::3]))
+    vis_imgs = multi_thread(f_iter, enumerate(img_ids[0::3]), max_workers=8)
     save_path = 'results_vis/{}.mp4'.format(name)
-    images_to_video(vis_imgs, save_path, output_size=(480, 320), verbose=False)
+    images_to_video(vis_imgs, save_path, output_size=(480, 320), verbose=True)
     print(f'rs dms:"{osp.abspath(save_path)}" ./ && open "{osp.basename(save_path)}"')
     
 if __name__ == '__main__':
