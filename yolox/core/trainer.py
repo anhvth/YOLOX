@@ -138,7 +138,7 @@ class Trainer:
             self.after_iter()
 
     def visualize_one_batch(self):
-        for self.iter in range(self.num_workers+1):
+        for self.iter in range(5):
             inps, targets = self.prefetcher.next()
         
         from avcv.all import tensor2imgs, bbox_visualize, mmcv
@@ -211,6 +211,7 @@ class Trainer:
 
         # model related init
         torch.cuda.set_device(self.local_rank)
+        
         model = self.exp.get_model()
         logger.info(
             "Model Summary: {}".format(get_model_info(model, self.exp.test_size, self.exp.input_channel))

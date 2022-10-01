@@ -111,10 +111,19 @@ class COCODataset(Dataset):
         )
         max_h = self.img_size[0]
         max_w = self.img_size[1]
-        cache_file = os.path.join(self.data_dir, f"img_resized_cache_{self.name}.array")
+        
+        def identify(x):
+            '''Return an hex digest of the input'''
+            import xxhash, pickle
+            return xxhash.xxh64(pickle.dumps(x), seed=0).hexdigest()
+        img_list = [os.path.basename(_[3]) for _ in self.annotations]
+        ident = identify(img_list)
+
+        cache_file = os.path.join(self.data_dir, f"img_resized_cache_{self.name}_h{max_h}_w{max_w}_{ident}.array")
+        logger.info(f'Trying to Loading from {cache_file}...')
         if not os.path.exists(cache_file):
             logger.info(
-                "Caching images for the first time. This might take about 20 minutes for COCO"
+                f"Caching images for the first time. This might take about 20 minutes for COCO, "
             )
             self.imgs = np.memmap(
                 cache_file,
