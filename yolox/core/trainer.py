@@ -470,7 +470,7 @@ class Finetuner(Trainer):
         #--
         # Update self.prefetcher
         
-        if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs:
+        if self.epoch + 1 == self.max_epoch - self.exp.no_aug_epochs or self.no_aug:
             logger.info(f'Epoch {self.epoch }---> Use finetune dataset only | No mosaic, no mixup')
             self.train_loader = self.exp.get_finetune_data_loader(
                 batch_size=self.args.batch_size,
